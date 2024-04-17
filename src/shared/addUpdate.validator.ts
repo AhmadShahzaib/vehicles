@@ -15,8 +15,8 @@ export const addAndUpdate = async (
     if (
       vehicle &&
       Object.keys(vehicle).length > 0 &&
-      vehicle.vinNo.toLowerCase() ==
-        requestModel.vinNo.toLowerCase()
+      vehicle?.vinNo.toLowerCase() ==
+        requestModel?.vinNo.toLowerCase()
     ) {
       Logger.log(`Vin number already exists`);
       throw new ConflictException(`Vin number already exists`);

@@ -357,7 +357,8 @@ export class AppController extends BaseController {
     @Res() response: Response,
     @Req() request: Request,
   ) {
-    const { vinNo, licensePlateNo, vehicleId } = vehicleModel;
+    const {  licensePlateNo, vehicleId } = vehicleModel;
+    const  vinNo =  vehicleModel?.vinNo;
     const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
     try {
       // Checking Vehicle Conflicts
@@ -418,7 +419,7 @@ export class AppController extends BaseController {
             vehicleModel.eldId,
             vehicleModel.make,
             vehicleModel.licensePlateNo,
-            vehicleModel.vinNo,
+            vehicleModel?.vinNo,
           );
           const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
           return response.status(HttpStatus.CREATED).send({
