@@ -292,6 +292,11 @@ export class AppService extends BaseService<VehicleDocument> {
   };
 
   updateDeviceAssigned = async (
+    isActive: boolean,
+    eldNo: string,
+    vendor: string,
+    serialNo: string,
+    eldId: string,
     vehicleId: String,
     manualVehicleId: String,
     deviceId: string,
@@ -303,7 +308,11 @@ export class AppService extends BaseService<VehicleDocument> {
       const resp = await firstValueFrom(
         this.unitClient.emit(
           { cmd: 'assign_device_to_vehicle' },
-          {
+          {isActive,
+            eldNo,
+            vendor,
+            serialNo,
+            eldId,
             vehicleId,
             manualVehicleId,
             deviceId,
