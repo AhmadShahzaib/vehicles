@@ -55,7 +55,7 @@ export class EditVehiclesRequest {
   tenantId?: string;
 
   @ApiProperty()
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   vinNo: string;
 

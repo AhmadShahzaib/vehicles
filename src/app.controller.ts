@@ -627,8 +627,9 @@ export class AppController extends BaseController {
       );
       const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
       Logger.log(`Request to update  vehicle  with param id:${id}`);
-      const { vinNo, licensePlateNo, vehicleId }: EditVehiclesRequest =
+      const {  licensePlateNo, vehicleId }: EditVehiclesRequest =
         editRequestData;
+        const vinNo = editRequestData?.vinNo;
       const option = {
         $and: [
           { _id: { $ne: id }, isDeleted: false },
