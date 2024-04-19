@@ -105,6 +105,30 @@ export class AppController extends BaseController {
     return vehicle ?? exception;
   }
 
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'get_all_vehicle' })
+  async tcp_getAllVehicle(): Promise<VehiclesResponse | Error> {
+    let vehicles;
+    let exception;
+    const vehicleList: VehiclesResponse[] = [];
+
+    try {
+      const options: FilterQuery<VehicleDocument> = {};
+      vehicles = await this.vehicleService.find(options);
+      if (!vehicles) {
+        throw new NotFoundException('Vehicle not found');
+      }
+
+      for (const vehicle of vehicles){
+
+        vehicleList.push(new VehiclesResponse(vehicle));
+      }
+    } catch (error) {
+      exception = error;
+    }
+
+    return vehicleList ?? exception;
+  }
   //
   @UseInterceptors(new MessagePatternResponseInterceptor())
   @MessagePattern({ cmd: 'assign_driverId_to_vehicle' })
