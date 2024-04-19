@@ -489,11 +489,7 @@ export class AppController extends BaseController {
             { isDeleted: false },
             {
               $or: [
-                {
-                  vinNo: {
-                    $regex: new RegExp(`^${vehicleModel.vinNo}$`, 'i'),
-                  },
-                },
+               
                 {
                   licensePlateNo: {
                     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
@@ -505,7 +501,7 @@ export class AppController extends BaseController {
         });
         if (secSearch) {
           throw new ConflictException(
-            `Vehicle already exists with either the same vinNo or lisencePlateNo!`,
+            `Vehicle already exists with the same  lisencePlateNo!`,
           );
         }
 
@@ -536,7 +532,7 @@ export class AppController extends BaseController {
           //   eldDetail,
           // );
         }
-        // Vehicle not exists, but eldId is not provided
+        // Vehicle not exists, and eldId is not provided
         else {
           eldDetail = { id: null, eldNo: null };
           vehicleModel.eldId = null;
@@ -558,7 +554,7 @@ export class AppController extends BaseController {
           // );
         }
       } else {
-        // If vehicle exists
+        // If vehicle exists and eld provided
         if (vehicleModel.eldId) {
           // Vehicle exists, but eldId is provided
           eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
