@@ -157,7 +157,7 @@ export class AppService extends BaseService<VehicleDocument> {
     try {
       return await this.vehicleModel
         .findById(id)
-        .and([{ isDeleted: false }, option]);
+        .and([ option]);
     } catch (err) {
       Logger.error({ message: err.message, stack: err.stack });
       Logger.log({ id });
