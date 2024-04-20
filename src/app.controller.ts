@@ -508,26 +508,26 @@ export class AppController extends BaseController {
 
       // If vehicle not exists
       if (!vehicle) {
-        const secSearch = await this.vehicleService.findOne({
-          $and: [
-            { isDeleted: false },
-            {
-              $or: [
+        // const secSearch = await this.vehicleService.findOne({
+        //   $and: [
+        //     { isDeleted: false },
+        //     {
+        //       $or: [
                
-                {
-                  licensePlateNo: {
-                    $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
-                  },
-                },
-              ],
-            },
-          ],
-        });
-        if (secSearch) {
-          throw new ConflictException(
-            `Vehicle already exists with the same  lisencePlateNo!`,
-          );
-        }
+        //         // {
+        //         //   licensePlateNo: {
+        //         //     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
+        //         //   },
+        //         // },
+        //       ],
+        //     },
+        //   ],
+        // });
+        // if (secSearch) {
+        //   throw new ConflictException(
+        //     `Vehicle already exists with the same  lisencePlateNo!`,
+        //   );
+        // }
 
         if (vehicleModel.eldId) {
           // Vehicle not exists, but eldId is provided
