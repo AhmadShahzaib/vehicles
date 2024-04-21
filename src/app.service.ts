@@ -121,6 +121,9 @@ export class AppService extends BaseService<VehicleDocument> {
         this.client.send({ cmd: 'get_device_by_id' }, id),
       );
       if (resp.isError) {
+        let errorMessage = `ELD not Found Deleted from DB with id: `+ id;
+      throw new ConflictException(`ELD not Found Deleted from DB with id: `+ id);
+
         mapMessagePatternResponseToException(resp);
       }
       return resp.data;
