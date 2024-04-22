@@ -505,7 +505,11 @@ export class AppController extends BaseController {
       //     throw new ConflictException(`ELD already assigned!`);
       //   }
       // }
-
+      if (vehicle) {
+          throw new ConflictException(
+            `Vehicle already exists with the same  Vehicle Id!`,
+          );
+        }
       // If vehicle not exists
       if (!vehicle) {
         // const secSearch = await this.vehicleService.findOne({
