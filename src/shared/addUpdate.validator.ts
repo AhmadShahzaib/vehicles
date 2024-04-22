@@ -14,7 +14,7 @@ export const addAndUpdate = async (
     const vehicle = await vehicleService.findOne(option);
     if (
       vehicle &&
-      Object.keys(vehicle).length > 0 &&
+      Object.keys(vehicle).length > 0 && vehicle?.vinNo &&
       vehicle?.vinNo.toLowerCase() ==
         requestModel?.vinNo.toLowerCase()
     ) {
@@ -22,7 +22,7 @@ export const addAndUpdate = async (
       throw new ConflictException(`Vin number already exists`);
     }
     if (
-      vehicle &&
+      vehicle && vehicle.licensePlateNo &&
       vehicle.licensePlateNo.toLowerCase() ==
         requestModel.licensePlateNo.toLowerCase()
     ) {
