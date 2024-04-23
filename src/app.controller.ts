@@ -150,8 +150,9 @@ export class AppController extends BaseController {
     try {
       const options: FilterQuery<VehicleDocument> = {};
 
-      const { search, orderBy, orderType, pageNo, limit, showUnAssigned } =
+      const { search, orderBy, orderType, limit, showUnAssigned } =
         queryParams;
+        let {pageNo} = queryParams;
       const { tenantId: id } = request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
@@ -229,6 +230,9 @@ export class AppController extends BaseController {
         }
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
+      }
+      if(vehicleList.length == 0 ){
+        if(pageNo > 1) {pageNo = pageNo-1 }
       }
       return response.status(HttpStatus.OK).send({
         data: vehicleList,
