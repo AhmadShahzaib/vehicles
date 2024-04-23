@@ -487,7 +487,7 @@ export class AppController extends BaseController {
       // Check if requested vehicle exists
       const vehicle = await this.vehicleService.findOne({
         $and: [
-          { isDeleted: false },
+          
           {
             vehicleId: {
               $regex: new RegExp(`^${vehicleModel.vehicleId}$`, 'i'),
