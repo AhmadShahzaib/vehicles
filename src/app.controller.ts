@@ -290,7 +290,7 @@ export class AppController extends BaseController {
         const result: VehiclesResponse = new VehiclesResponse(vehicles);
         Logger.log(`status changed successfully with id:${id}`);
         return response.status(HttpStatus.OK).send({
-          message: 'Vehicle status has been changed successfully',
+          message: `Vehicle is ${isActive ? "activated": "deactivated"} successfully`,
           data: result,
         });
       } else {
