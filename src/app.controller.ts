@@ -294,7 +294,7 @@ export class AppController extends BaseController {
           data: result,
         });
       } else {
-        Logger.log(`status not changed with id:${id}`);
+        Logger.log(`status not changed with id:${id} try Later  `);
         throw new NotFoundException(`${id} does not exist`);
       }
       // }
