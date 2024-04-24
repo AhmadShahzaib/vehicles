@@ -489,16 +489,24 @@ export class AppController extends BaseController {
       let eldDetail;
 
       // Check if requested vehicle exists
-      const vehicle = await this.vehicleService.findOne({
+      let option = {
         $and: [
+          {}
           
-          {
-            vehicleId: {
-              $regex: new RegExp(`^${vehicleModel.vehicleId}$`, 'i'),
-            },
-          },
         ],
-      });
+        $or: [
+            { vinNo: { $regex: new RegExp(`^${vehicleModel.vinNo}`, 'i') } },
+            { licensePlateNo: { $regex: new RegExp(`^${vehicleModel.licensePlateNo}`, 'i') } },
+            {
+              vehicleId: {
+                $regex: new RegExp(`^${vehicleModel.vehicleId}$`, 'i'),
+              },
+            },
+           
+          ],
+      }
+    
+      const vehicle = await this.vehicleService.findOne(option);
 
       // is eldAssigned comment as for now one ELD associate with multiple vehicle models
       // if (vehicleModel.eldId) {
@@ -511,7 +519,7 @@ export class AppController extends BaseController {
       // }
       if (vehicle) {
           throw new ConflictException(
-            `Vehicle Id already exists`,
+            `Vehicle already exists`,
           );
         }
       // If vehicle not exists
