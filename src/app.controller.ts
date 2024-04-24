@@ -511,7 +511,7 @@ export class AppController extends BaseController {
       // }
       if (vehicle) {
           throw new ConflictException(
-            `Vehicle already exists with the same  Vehicle Id!`,
+            `Vehicle Id already exists`,
           );
         }
       // If vehicle not exists
