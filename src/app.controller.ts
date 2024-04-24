@@ -503,7 +503,23 @@ export class AppController extends BaseController {
       option.$or.push({ vehicleId: vehicleModel.vehicleId });
 
       const vehicle = await this.vehicleService.findOne(option);
-
+      if (
+        vehicle &&
+        Object.keys(vehicle).length > 0 && vehicle?.vinNo &&
+        vehicle?.vinNo.toLowerCase() ==
+        vehicleModel?.vinNo.toLowerCase()
+      ) {
+        Logger.log(`Vin number already exists`);
+        throw new ConflictException(`Vin number already exists`);
+      }
+      if (
+        vehicle && vehicle.licensePlateNo &&
+        vehicle.licensePlateNo.toLowerCase() ==
+        vehicleModel?.licensePlateNo.toLowerCase()
+      ) {
+        Logger.log(`License plate number already exists`);
+        throw new ConflictException(`License plate number already exists`);
+      }
       // is eldAssigned comment as for now one ELD associate with multiple vehicle models
       // if (vehicleModel.eldId) {
       //   const isEldAssigned = await this.vehicleService.findOne({
