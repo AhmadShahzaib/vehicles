@@ -119,8 +119,7 @@ export class AppController extends BaseController {
         throw new NotFoundException('Vehicle not found');
       }
 
-      for (const vehicle of vehicles){
-
+      for (const vehicle of vehicles) {
         vehicleList.push(new VehiclesResponse(vehicle));
       }
     } catch (error) {
@@ -150,9 +149,8 @@ export class AppController extends BaseController {
     try {
       const options: FilterQuery<VehicleDocument> = {};
 
-      const { search, orderBy, orderType, limit, showUnAssigned } =
-        queryParams;
-        let {pageNo} = queryParams;
+      const { search, orderBy, orderType, limit, showUnAssigned } = queryParams;
+      let { pageNo } = queryParams;
       const { tenantId: id } = request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
@@ -231,8 +229,10 @@ export class AppController extends BaseController {
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
       }
-      if(vehicleList.length == 0 ){
-        if(pageNo > 1) {pageNo = pageNo-1 }
+      if (vehicleList.length == 0) {
+        if (pageNo > 1) {
+          pageNo = pageNo - 1;
+        }
       }
       return response.status(HttpStatus.OK).send({
         data: vehicleList,
@@ -290,7 +290,9 @@ export class AppController extends BaseController {
         const result: VehiclesResponse = new VehiclesResponse(vehicles);
         Logger.log(`status changed successfully with id:${id}`);
         return response.status(HttpStatus.OK).send({
-          message: `Vehicle is ${isActive ? "activated": "deactivated"} successfully`,
+          message: `Vehicle is ${
+            isActive ? 'activated' : 'deactivated'
+          } successfully`,
           data: result,
         });
       } else {
@@ -490,22 +492,16 @@ export class AppController extends BaseController {
 
       // Check if requested vehicle exists
       let option = {
-        $and: [
-          {}
-          
-        ],
-        $or: [
-            { vinNo: { $regex: new RegExp(`^${vehicleModel.vinNo}`, 'i') } },
-            { licensePlateNo: { $regex: new RegExp(`^${vehicleModel.licensePlateNo}`, 'i') } },
-            {
-              vehicleId: {
-                $regex: new RegExp(`^${vehicleModel.vehicleId}$`, 'i'),
-              },
-            },
-           
-          ],
+        $or: [],
+      };
+      if (vehicleModel.vinNo) {
+        option.$or.push({ vinNo: vehicleModel.vinNo });
       }
-    
+      if (vehicleModel.licensePlateNo) {
+        option.$or.push({ licensePlateNo: vehicleModel.licensePlateNo });
+      }
+      option.$or.push({ vehicleId: vehicleModel.vehicleId });
+
       const vehicle = await this.vehicleService.findOne(option);
 
       // is eldAssigned comment as for now one ELD associate with multiple vehicle models
@@ -518,10 +514,8 @@ export class AppController extends BaseController {
       //   }
       // }
       if (vehicle) {
-          throw new ConflictException(
-            `Vehicle already exists`,
-          );
-        }
+        throw new ConflictException(`Vehicle already exists`);
+      }
       // If vehicle not exists
       if (!vehicle) {
         // const secSearch = await this.vehicleService.findOne({
@@ -529,7 +523,7 @@ export class AppController extends BaseController {
         //     { isDeleted: false },
         //     {
         //       $or: [
-               
+
         //         // {
         //         //   licensePlateNo: {
         //         //     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
@@ -553,7 +547,6 @@ export class AppController extends BaseController {
             tenantId,
             eldDetail,
           );
-         
 
           // The function below updates unit assignments with Vehicle and Eld
           // comment as now unit create on add driver creation time
