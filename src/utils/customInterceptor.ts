@@ -7,15 +7,15 @@ const axiosCall = async (data) => {
       data: data,
     };
 
-    let result = await axios(config);
-    console.log(result);
+    // let result = await axios(config);
+    // console.log(result);
   } catch (err) {
-    console.log(err);
+    // console.log(err);
   }
 };
 
 const logData = async (req, data) => {
-  console.log(data);
+  // console.log(data);
   let params;
   if (Object.keys(req.params).length !== 0) {
     params = req.params;
@@ -34,16 +34,16 @@ const logData = async (req, data) => {
     header: req.headers,
     response: JSON.stringify(data),
   };
-  await axiosCall(dataForAxios);
+  // await axiosCall(dataForAxios);
 };
 
 export const CustomInterceptor = (req, res, next) => {
-  const oldSend = res.send;
-  res.send = (data) => {
-    logData(req, data);
-    res.send = oldSend;
-    return res.send(data);
-  };
+  // const oldSend = res.send;
+  // res.send = (data) => {
+  //   logData(req, data);
+  //   res.send = oldSend;
+  //   return res.send(data);
+  // };
   // if (next)
   next();
 };

@@ -121,6 +121,9 @@ export class AppService extends BaseService<VehicleDocument> {
         this.client.send({ cmd: 'get_device_by_id' }, id),
       );
       if (resp.isError) {
+        let errorMessage = `ELD not Found Deleted from DB with id: `+ id;
+      throw new ConflictException(`ELD not Found Deleted from DB with id: `+ id);
+
         mapMessagePatternResponseToException(resp);
       }
       return resp.data;
@@ -157,7 +160,7 @@ export class AppService extends BaseService<VehicleDocument> {
     try {
       return await this.vehicleModel
         .findById(id)
-        .and([{ isDeleted: false }, option]);
+        .and([ option]);
     } catch (err) {
       Logger.error({ message: err.message, stack: err.stack });
       Logger.log({ id });
@@ -292,6 +295,11 @@ export class AppService extends BaseService<VehicleDocument> {
   };
 
   updateDeviceAssigned = async (
+    isActive: boolean,
+    eldNo: string,
+    vendor: string,
+    serialNo: string,
+    eldId: string,
     vehicleId: String,
     manualVehicleId: String,
     deviceId: string,
@@ -303,7 +311,11 @@ export class AppService extends BaseService<VehicleDocument> {
       const resp = await firstValueFrom(
         this.unitClient.emit(
           { cmd: 'assign_device_to_vehicle' },
-          {
+          {isActive,
+            eldNo,
+            vendor,
+            serialNo,
+            eldId,
             vehicleId,
             manualVehicleId,
             deviceId,

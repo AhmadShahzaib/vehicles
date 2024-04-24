@@ -105,6 +105,30 @@ export class AppController extends BaseController {
     return vehicle ?? exception;
   }
 
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'get_all_vehicle' })
+  async tcp_getAllVehicle(): Promise<VehiclesResponse | Error> {
+    let vehicles;
+    let exception;
+    const vehicleList: VehiclesResponse[] = [];
+
+    try {
+      const options: FilterQuery<VehicleDocument> = {};
+      vehicles = await this.vehicleService.find(options);
+      if (!vehicles) {
+        throw new NotFoundException('Vehicle not found');
+      }
+
+      for (const vehicle of vehicles){
+
+        vehicleList.push(new VehiclesResponse(vehicle));
+      }
+    } catch (error) {
+      exception = error;
+    }
+
+    return vehicleList ?? exception;
+  }
   //
   @UseInterceptors(new MessagePatternResponseInterceptor())
   @MessagePattern({ cmd: 'assign_driverId_to_vehicle' })
@@ -126,8 +150,9 @@ export class AppController extends BaseController {
     try {
       const options: FilterQuery<VehicleDocument> = {};
 
-      const { search, orderBy, orderType, pageNo, limit, showUnAssigned } =
+      const { search, orderBy, orderType, limit, showUnAssigned } =
         queryParams;
+        let {pageNo} = queryParams;
       const { tenantId: id } = request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
@@ -206,6 +231,9 @@ export class AppController extends BaseController {
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
       }
+      if(vehicleList.length == 0 ){
+        if(pageNo > 1) {pageNo = pageNo-1 }
+      }
       return response.status(HttpStatus.OK).send({
         data: vehicleList,
         total,
@@ -262,11 +290,11 @@ export class AppController extends BaseController {
         const result: VehiclesResponse = new VehiclesResponse(vehicles);
         Logger.log(`status changed successfully with id:${id}`);
         return response.status(HttpStatus.OK).send({
-          message: 'Vehicle status has been changed successfully',
+          message: `Vehicle is ${isActive ? "activated": "deactivated"} successfully`,
           data: result,
         });
       } else {
-        Logger.log(`status not changed with id:${id}`);
+        Logger.log(`status not changed with id:${id} try Later  `);
         throw new NotFoundException(`${id} does not exist`);
       }
       // }
@@ -348,93 +376,94 @@ export class AppController extends BaseController {
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'vehicleDocument', maxCount: 50 }]),
   )
-  async addVehicle(
-    @Body() vehicleModel: VehiclesRequest,
-    @UploadedFiles()
-    files: {
-      vehicleDocument: Express.Multer.File[];
-    },
-    @Res() response: Response,
-    @Req() request: Request,
-  ) {
-    const { vinNo, licensePlateNo, vehicleId } = vehicleModel;
-    const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
-    try {
-      // Checking Vehicle Conflicts
-      const options: FilterQuery<VehicleDocument> = {
-        $and: [
-          { isDeleted: false },
-          { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
-        ],
-        // $or: [
-        //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
+  // async addVehicle( // not using anymore
+  //   @Body() vehicleModel: VehiclesRequest,
+  //   @UploadedFiles()
+  //   files: {
+  //     vehicleDocument: Express.Multer.File[];
+  //   },
+  //   @Res() response: Response,
+  //   @Req() request: Request,
+  // ) {
+  //   const { licensePlateNo, vehicleId } = vehicleModel;
+  //   const vinNo = vehicleModel?.vinNo;
+  //   const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
+  //   try {
+  //     // Checking Vehicle Conflicts
+  //     const options: FilterQuery<VehicleDocument> = {
+  //       $and: [
+  //         { isDeleted: false },
+  //         { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
+  //       ],
+  //       // $or: [
+  //       //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
 
-        // ],
-      };
-      const vehicle = await this.vehicleService.findOne(options);
+  //       // ],
+  //     };
+  //     const vehicle = await this.vehicleService.findOne(options);
 
-      if (vehicle) {
-        const data = vehicle['_doc'];
-        if (data.vinNo == vinNo) {
-          throw new ConflictException(`vinalready exists`);
-        }
-        if (data.vehicleId == vehicleId) {
-          throw new ConflictException(`vehicleId already exists`);
-        }
-      }
-      const eldCheck = await this.vehicleService.populateEld(
-        vehicleModel.eldId,
-      );
-      let eldDetail;
-      if (vehicleModel.eldId) {
-        eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
-      }
-      const vehicleResponseRequest = await addAndUpdate(
-        this.vehicleService,
-        vehicleModel,
-        options,
-      );
+  //     if (vehicle) {
+  //       const data = vehicle['_doc'];
+  //       if (data.vinNo == vinNo) {
+  //         throw new ConflictException(`vinalready exists`);
+  //       }
+  //       if (data.vehicleId == vehicleId) {
+  //         throw new ConflictException(`vehicleId already exists`);
+  //       }
+  //     }
+  //     const eldCheck = await this.vehicleService.populateEld(
+  //       vehicleModel.eldId,
+  //     );
+  //     let eldDetail;
+  //     if (vehicleModel.eldId) {
+  //       eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
+  //     }
+  //     const vehicleResponseRequest = await addAndUpdate(
+  //       this.vehicleService,
+  //       vehicleModel,
+  //       options,
+  //     );
 
-      //  Checking Office ID
-      if (
-        vehicleResponseRequest &&
-        Object.keys(vehicleResponseRequest).length > 0
-      ) {
-        let vehicleRequest = await uploadDocument(
-          files?.vehicleDocument,
-          this.awsService,
-          vehicleResponseRequest,
-          tenantId,
-        );
-        vehicleRequest.currentEld = eldDetail?.eldNo;
-        const vehicleDoc = await this.vehicleService.addVehicle(
-          vehicleRequest as VehiclesRequest,
-          tenantId,
-        );
-        if (vehicleDoc) {
-          await this.vehicleService.updateDeviceAssigned(
-            vehicleDoc.id,
-            vehicleDoc.vehicleId,
-            vehicleModel.eldId,
-            vehicleModel.make,
-            vehicleModel.licensePlateNo,
-            vehicleModel.vinNo,
-          );
-          const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
-          return response.status(HttpStatus.CREATED).send({
-            message: 'Vehicle has been added successfully',
-            data: result,
-          });
-        }
-      } else {
-        Logger.log(`vehicle not added`);
-        throw new InternalServerErrorException(`Vehicle not added`);
-      }
-    } catch (error) {
-      Logger.error({ message: error.message, stack: error.stack });
-      throw error;
-    }
-  }
+  //     //  Checking Office ID
+  //     if (
+  //       vehicleResponseRequest &&
+  //       Object.keys(vehicleResponseRequest).length > 0
+  //     ) {
+  //       let vehicleRequest = await uploadDocument(
+  //         files?.vehicleDocument,
+  //         this.awsService,
+  //         vehicleResponseRequest,
+  //         tenantId,
+  //       );
+  //       vehicleRequest.currentEld = eldDetail?.eldNo;
+  //       const vehicleDoc = await this.vehicleService.addVehicle(
+  //         vehicleRequest as VehiclesRequest,
+  //         tenantId,
+  //       );
+  //       if (vehicleDoc) {
+  //         await this.vehicleService.updateDeviceAssigned(
+  //           vehicleDoc.id,
+  //           vehicleDoc.vehicleId,
+  //           vehicleModel.eldId,
+  //           vehicleModel.make,
+  //           vehicleModel.licensePlateNo,
+  //           vehicleModel?.vinNo,
+  //         );
+  //         const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
+  //         return response.status(HttpStatus.CREATED).send({
+  //           message: 'Vehicle has been added successfully',
+  //           data: result,
+  //         });
+  //       }
+  //     } else {
+  //       Logger.log(`vehicle not added`);
+  //       throw new InternalServerErrorException(`Vehicle not added`);
+  //     }
+  //   } catch (error) {
+  //     Logger.error({ message: error.message, stack: error.stack });
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Dynamic Vehicle creation
@@ -462,7 +491,7 @@ export class AppController extends BaseController {
       // Check if requested vehicle exists
       const vehicle = await this.vehicleService.findOne({
         $and: [
-          { isDeleted: false },
+          
           {
             vehicleId: {
               $regex: new RegExp(`^${vehicleModel.vehicleId}$`, 'i'),
@@ -480,33 +509,33 @@ export class AppController extends BaseController {
       //     throw new ConflictException(`ELD already assigned!`);
       //   }
       // }
-
-      // If vehicle not exists
-      if (!vehicle) {
-        const secSearch = await this.vehicleService.findOne({
-          $and: [
-            { isDeleted: false },
-            {
-              $or: [
-                {
-                  vinNo: {
-                    $regex: new RegExp(`^${vehicleModel.vinNo}$`, 'i'),
-                  },
-                },
-                {
-                  licensePlateNo: {
-                    $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
-                  },
-                },
-              ],
-            },
-          ],
-        });
-        if (secSearch) {
+      if (vehicle) {
           throw new ConflictException(
-            `Vehicle already exists with either the same vinNo or lisencePlateNo!`,
+            `Vehicle Id already exists`,
           );
         }
+      // If vehicle not exists
+      if (!vehicle) {
+        // const secSearch = await this.vehicleService.findOne({
+        //   $and: [
+        //     { isDeleted: false },
+        //     {
+        //       $or: [
+               
+        //         // {
+        //         //   licensePlateNo: {
+        //         //     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
+        //         //   },
+        //         // },
+        //       ],
+        //     },
+        //   ],
+        // });
+        // if (secSearch) {
+        //   throw new ConflictException(
+        //     `Vehicle already exists with the same  lisencePlateNo!`,
+        //   );
+        // }
 
         if (vehicleModel.eldId) {
           // Vehicle not exists, but eldId is provided
@@ -516,6 +545,8 @@ export class AppController extends BaseController {
             tenantId,
             eldDetail,
           );
+         
+
           // The function below updates unit assignments with Vehicle and Eld
           // comment as now unit create on add driver creation time
           // await this.vehicleService.updateVehicleAssigned(
@@ -533,7 +564,7 @@ export class AppController extends BaseController {
           //   eldDetail,
           // );
         }
-        // Vehicle not exists, but eldId is not provided
+        // Vehicle not exists, and eldId is not provided
         else {
           eldDetail = { id: null, eldNo: null };
           vehicleModel.eldId = null;
@@ -555,7 +586,7 @@ export class AppController extends BaseController {
           // );
         }
       } else {
-        // If vehicle exists
+        // If vehicle exists and eld provided
         if (vehicleModel.eldId) {
           // Vehicle exists, but eldId is provided
           eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
@@ -626,8 +657,9 @@ export class AppController extends BaseController {
       );
       const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
       Logger.log(`Request to update  vehicle  with param id:${id}`);
-      const { vinNo, licensePlateNo, vehicleId }: EditVehiclesRequest =
+      const { licensePlateNo, vehicleId }: EditVehiclesRequest =
         editRequestData;
+      const vinNo = editRequestData?.vinNo;
       const option = {
         $and: [
           { _id: { $ne: id }, isDeleted: false },
@@ -663,6 +695,20 @@ export class AppController extends BaseController {
             id,
             vehicleRequest,
           );
+          await this.vehicleService.updateDeviceAssigned(
+            eldDetail.isActive,
+            eldDetail.eldNo,
+            eldDetail.vendor,
+            eldDetail.serialNo,
+            eldDetail.id,
+
+            vehicleDoc.id,
+            vehicleDoc.vehicleId,
+            vehicleRequest.eldId,
+            vehicleRequest.make,
+            vehicleRequest.licensePlateNo,
+            vehicleRequest?.vinNo,
+          );
         } else {
           eldDetail = { id: null, eldNo: null };
           vehicleRequest.eldId = null;
@@ -678,12 +724,12 @@ export class AppController extends BaseController {
           const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
 
           // await this.vehicleService.updateDeviceAssigned(
-          //   vehicleResponse.id,
-          //   vehicleResponse.vehicleId,
-          //   vehicleResponse.eldId,
-          //   vehicleResponse.make,
-          //   vehicleResponse.licensePlateNo,
-          //   vehicleResponse.vinNo,
+          //   vehicleDoc.id,
+          //   vehicleDoc.vehicleId,
+          //   vehicleDoc.eldId,
+          //   vehicleDoc.make,
+          //   vehicleDoc.licensePlateNo,
+          //   vehicleDoc.vinNo,
           // );
 
           return response.status(HttpStatus.OK).send({

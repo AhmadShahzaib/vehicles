@@ -76,7 +76,7 @@ export class VehiclesRequest {
   tenantId?: string;
 
   @ApiProperty()
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   vinNo: string;
 

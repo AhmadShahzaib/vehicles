@@ -73,7 +73,8 @@ export class VehiclesResponse extends BaseResponseType {
 
   @ApiProperty()
   terminalName: string;
-
+  @ApiProperty()
+  createdAt: string;
   @ApiProperty()
   mainOfficeName: string;
 
@@ -105,5 +106,6 @@ export class VehiclesResponse extends BaseResponseType {
     this.vinNo = vehicleDocument.vinNo;
     this.readingDateTime = vehicleDocument.readingDateTime;
     this.assignedDrivers = vehicleDocument.assignedDrivers;
+    this.createdAt = vehicleDocument.createdAt;
   }
 }
