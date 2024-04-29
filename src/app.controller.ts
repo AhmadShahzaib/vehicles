@@ -271,7 +271,7 @@ export class AppController extends BaseController {
       const vehicle: boolean =
         await this.vehicleService.isVehicleAssignedDriver(id);
       if (vehicle) {
-        throw new ConflictException(`This Vehicle associated with the Driver`);
+        throw new ConflictException(`Vehicle is already associated with the Driver`);
       }
       // const { permissions } = req.user ?? ({ permissions: undefined } as any);
       // const permission = permissions.find((permission) => {
