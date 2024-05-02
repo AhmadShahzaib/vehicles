@@ -12,7 +12,7 @@ import { VehiclesResponse } from '../models/response.model';
 export default function IsActiveDecorators() {
   const IsActiveDecorators: Array<CombineDecoratorType> = [
     Patch('/status/:id'),
-    SetMetadata('permissions', [VEHICLES.ACTIVATE]),
+    SetMetadata('permissions', [VEHICLES.DEACTIVATE]),
     ApiBearerAuth('access-token'),
     ApiResponse({ status: HttpStatus.OK, type: VehiclesResponse }),
     ApiParam({
