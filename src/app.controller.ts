@@ -682,11 +682,11 @@ export class AppController extends BaseController {
           { _id: { $ne: id }, isDeleted: false },
           { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
-        // $or: [
+        $or: [
         //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
-        //   { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
+          { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
         //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
-        // ],
+        ],
       };
       const vehicleResponseRequest = await addAndUpdate(
         this.vehicleService,
