@@ -140,6 +140,16 @@ export class AppController extends BaseController {
   }
   //
 
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'update_eldId_in_vehicle' })
+  async tcp_updateEldIdInVehicle(params: any) {
+    const response = await this.vehicleService.updateEldIdInVehicle(
+      params.vehicleId,
+      params.eldId,
+    );
+    return response;
+  }
+
   @GetDecorators()
   async getVehicles(
     @Query(new ListingParamsValidationPipe()) queryParams: ListingParams,
@@ -271,7 +281,9 @@ export class AppController extends BaseController {
       const vehicle: boolean =
         await this.vehicleService.isVehicleAssignedDriver(id);
       if (vehicle) {
-        throw new ConflictException(`Vehicle is already associated with the Driver`);
+        throw new ConflictException(
+          `Vehicle is already associated with the Driver`,
+        );
       }
       // const { permissions } = req.user ?? ({ permissions: undefined } as any);
       // const permission = permissions.find((permission) => {
@@ -505,17 +517,18 @@ export class AppController extends BaseController {
       const vehicle = await this.vehicleService.findOne(option);
       if (
         vehicle &&
-        Object.keys(vehicle).length > 0 && vehicle?.vinNo &&
-        vehicle?.vinNo.toLowerCase() ==
-        vehicleModel?.vinNo.toLowerCase()
+        Object.keys(vehicle).length > 0 &&
+        vehicle?.vinNo &&
+        vehicle?.vinNo.toLowerCase() == vehicleModel?.vinNo.toLowerCase()
       ) {
         Logger.log(`Vin number already exists`);
         throw new ConflictException(`Vin number already exists`);
       }
       if (
-        vehicle && vehicle.licensePlateNo &&
+        vehicle &&
+        vehicle.licensePlateNo &&
         vehicle.licensePlateNo.toLowerCase() ==
-        vehicleModel?.licensePlateNo.toLowerCase()
+          vehicleModel?.licensePlateNo.toLowerCase()
       ) {
         Logger.log(`License plate number already exists`);
         throw new ConflictException(`License plate number already exists`);
@@ -683,9 +696,9 @@ export class AppController extends BaseController {
           { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
         $or: [
-        //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
+          //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
           { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-        //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+          //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
         ],
       };
       const vehicleResponseRequest = await addAndUpdate(
