@@ -30,6 +30,7 @@ export class AppService extends BaseService<VehicleDocument> {
     private readonly vehicleModel: Model<VehicleDocument>,
     @Inject('ELD_SERVICE') private readonly client: ClientProxy,
     @Inject('UNIT_SERVICE') private readonly unitClient: ClientProxy,
+    @Inject('DRIVER_SERVICE') private readonly driverClient: ClientProxy,
   ) {
     super();
     this._model = vehicleModel;
@@ -423,6 +424,25 @@ export class AppService extends BaseService<VehicleDocument> {
     } catch (error) {
       Logger.error({ error });
       throw error;
+    }
+  };
+
+  populateDriver = async (
+    id: string,
+    option: any = {},
+  ) => {
+    try {
+      const resp = await firstValueFrom(
+        this.driverClient.send({ cmd: 'get_driver_by_id' }, { _id: id }),
+      );
+      if (resp.isError) {
+        mapMessagePatternResponseToException(resp);
+      }
+      return resp.data;
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      Logger.log({ id });
+      throw err;
     }
   };
 }

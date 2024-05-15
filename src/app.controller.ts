@@ -229,6 +229,21 @@ export class AppController extends BaseController {
 
       for (const vehicle of queryResponse) {
         const jsonVehicle = vehicle.toJSON();
+
+        let driverName;
+        if (jsonVehicle.assignedDrivers.length > 0) {
+          // Extracting driver id to populate driver details - START
+          const driverId =
+            jsonVehicle.assignedDrivers[jsonVehicle.assignedDrivers.length - 1]
+              .id;
+          const driverDetails = await this.vehicleService.populateDriver(
+            driverId,
+          );
+          driverName = `${driverDetails.firstName} ${driverDetails.lastName}`;
+        }
+        jsonVehicle.driverName = driverName ? driverName : '';
+        // Extracting driver id to populate driver details - END
+
         if (vehicle.eldId) {
           const eldPopulated = await this.vehicleService.populateEld(
             vehicle.eldId.toString(),
