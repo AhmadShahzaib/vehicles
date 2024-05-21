@@ -234,7 +234,7 @@ export class AppController extends BaseController {
             vehicle.eldId.toString(),
           );
           jsonVehicle.eldId = eldPopulated;
-          jsonVehicle.currentEld = eldPopulated.eldNo;
+          jsonVehicle.currentEld = eldPopulated.deviceName;
         }
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
@@ -720,7 +720,7 @@ export class AppController extends BaseController {
           eldDetail = await this.vehicleService.populateEld(
             vehicleRequest.eldId,
           );
-          vehicleRequest.currentEld = eldDetail.eldNo;
+          vehicleRequest.currentEld = eldDetail.deviceName;
           vehicleDoc = await this.vehicleService.updateVehicle(
             id,
             vehicleRequest,

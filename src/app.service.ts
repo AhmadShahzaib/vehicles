@@ -62,7 +62,7 @@ export class AppService extends BaseService<VehicleDocument> {
         { vehicleId: vehicle.vehicleId },
         {
           ...vehicle,
-          currentEld: eldDetail.eldNo || null,
+          currentEld: eldDetail.deviceName || null,
           eldId: eldDetail.id || null,
         },
         {
