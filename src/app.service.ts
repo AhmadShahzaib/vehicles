@@ -427,18 +427,15 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
-  populateDriver = async (
-    id: string,
-    option: any = {},
-  ) => {
+  populateDriver = async (id: string, option: any = {}) => {
     try {
       const resp = await firstValueFrom(
-        this.driverClient.send({ cmd: 'get_driver_by_id' }, { _id: id }),
+        this.driverClient.send({ cmd: 'get_assigned_driver_by_vehicleId' }, id),
       );
-      if (resp.isError) {
-        mapMessagePatternResponseToException(resp);
-      }
-      return resp.data;
+      // if (resp.isError) {
+      //   mapMessagePatternResponseToException(resp);
+      // }
+      return resp;
     } catch (err) {
       Logger.error({ message: err.message, stack: err.stack });
       Logger.log({ id });
