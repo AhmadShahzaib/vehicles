@@ -84,6 +84,9 @@ export class VehiclesResponse extends BaseResponseType {
   @ApiProperty()
   assignedDrivers: [];
 
+  @ApiProperty()
+  driverName: string;
+
   constructor(vehicleDocument: VehicleDocument | any) {
     super();
     this.id = vehicleDocument.id;
@@ -107,5 +110,6 @@ export class VehiclesResponse extends BaseResponseType {
     this.readingDateTime = vehicleDocument.readingDateTime;
     this.assignedDrivers = vehicleDocument.assignedDrivers;
     this.createdAt = vehicleDocument.createdAt;
+    this.driverName = vehicleDocument.driverName;
   }
 }

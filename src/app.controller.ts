@@ -140,6 +140,16 @@ export class AppController extends BaseController {
   }
   //
 
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'update_eldId_in_vehicle' })
+  async tcp_updateEldIdInVehicle(params: any) {
+    const response = await this.vehicleService.updateEldIdInVehicle(
+      params.vehicleId,
+      params.eldId,
+    );
+    return response;
+  }
+
   @GetDecorators()
   async getVehicles(
     @Query(new ListingParamsValidationPipe()) queryParams: ListingParams,
@@ -219,12 +229,29 @@ export class AppController extends BaseController {
 
       for (const vehicle of queryResponse) {
         const jsonVehicle = vehicle.toJSON();
+
+        let driverName = '';
+        if (jsonVehicle.assignedDrivers.length > 0) {
+          // Extracting driver id to populate driver details - START
+          // const driverId =
+          //   jsonVehicle.assignedDrivers[jsonVehicle.assignedDrivers.length - 1]
+          //     .id;
+          const driverDetails = await this.vehicleService.populateDriver(
+            jsonVehicle._id,
+          );
+          if (driverDetails?.data) {
+            driverName = `${driverDetails?.data?.firstName} ${driverDetails?.data?.lastName}`;
+          }
+        }
+        jsonVehicle.driverName = driverName;
+        // Extracting driver id to populate driver details - END
+
         if (vehicle.eldId) {
           const eldPopulated = await this.vehicleService.populateEld(
             vehicle.eldId.toString(),
           );
           jsonVehicle.eldId = eldPopulated;
-          jsonVehicle.currentEld = eldPopulated.eldNo;
+          jsonVehicle.currentEld = eldPopulated.deviceName;
         }
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
@@ -271,7 +298,9 @@ export class AppController extends BaseController {
       const vehicle: boolean =
         await this.vehicleService.isVehicleAssignedDriver(id);
       if (vehicle) {
-        throw new ConflictException(`Vehicle is already associated with the Driver`);
+        throw new ConflictException(
+          `Vehicle is already associated with the Driver`,
+        );
       }
       // const { permissions } = req.user ?? ({ permissions: undefined } as any);
       // const permission = permissions.find((permission) => {
@@ -506,17 +535,18 @@ export class AppController extends BaseController {
       const vehicle = await this.vehicleService.findOne(option);
       if (
         vehicle &&
-        Object.keys(vehicle).length > 0 && vehicle?.vinNo &&
-        vehicle?.vinNo.toLowerCase() ==
-        vehicleModel?.vinNo.toLowerCase()
+        Object.keys(vehicle).length > 0 &&
+        vehicle?.vinNo &&
+        vehicle?.vinNo.toLowerCase() == vehicleModel?.vinNo.toLowerCase()
       ) {
         Logger.log(`Vin number already exists`);
         throw new ConflictException(`Vin number already exists`);
       }
       if (
-        vehicle && vehicle.licensePlateNo &&
+        vehicle &&
+        vehicle.licensePlateNo &&
         vehicle.licensePlateNo.toLowerCase() ==
-        vehicleModel?.licensePlateNo.toLowerCase()
+          vehicleModel?.licensePlateNo.toLowerCase()
       ) {
         Logger.log(`License plate number already exists`);
         throw new ConflictException(`License plate number already exists`);
@@ -684,9 +714,9 @@ export class AppController extends BaseController {
           { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
         $or: [
-        //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
+          //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
           { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-        //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+          //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
         ],
       };
       const vehicleResponseRequest = await addAndUpdate(
@@ -708,7 +738,7 @@ export class AppController extends BaseController {
           eldDetail = await this.vehicleService.populateEld(
             vehicleRequest.eldId,
           );
-          vehicleRequest.currentEld = eldDetail.eldNo;
+          vehicleRequest.currentEld = eldDetail.deviceName;
           vehicleDoc = await this.vehicleService.updateVehicle(
             id,
             vehicleRequest,
