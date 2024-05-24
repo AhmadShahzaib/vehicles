@@ -493,6 +493,7 @@ export class AppController extends BaseController {
       // Check if requested vehicle exists
       let option = {
         $or: [],
+        $and:[{ tenantId: tenantId },]
       };
       if (vehicleModel.vinNo) {
         option.$or.push({ vinNo: vehicleModel.vinNo });
@@ -679,7 +680,7 @@ export class AppController extends BaseController {
       const vinNo = editRequestData?.vinNo;
       const option = {
         $and: [
-          { _id: { $ne: id }, isDeleted: false },
+          { _id: { $ne: id }, isDeleted: false },{ tenantId: tenantId },
           { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
         $or: [
