@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { ApiTags } from '@nestjs/swagger';
+import moment from 'moment-timezone';
 
 import { Response, Request } from 'express';
 import { MessagePattern } from '@nestjs/microservices';
@@ -161,7 +162,8 @@ export class AppController extends BaseController {
 
       const { search, orderBy, orderType, limit, showUnAssigned } = queryParams;
       let { pageNo } = queryParams;
-      const { tenantId: id } = request.user ?? ({ tenantId: undefined } as any);
+      const { tenantId: id, timeZone } =
+        request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
       let arr = [];
@@ -253,6 +255,12 @@ export class AppController extends BaseController {
           jsonVehicle.eldId = eldPopulated;
           jsonVehicle.currentEld = eldPopulated.deviceName;
         }
+        if (timeZone?.tzCode) {
+          jsonVehicle.createdAt = moment
+            .tz(jsonVehicle.createdAt, timeZone?.tzCode)
+            .format('DD/MM/YYYY h:mm a');
+        }
+
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
       }
