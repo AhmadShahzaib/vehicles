@@ -12,7 +12,7 @@ import {
 export default function DeleteDecorators() {
   const DeleteDecorators: Array<CombineDecoratorType> = [
     Delete(':id'),
-    SetMetadata('permissions', [VEHICLES.DELETE]),
+    SetMetadata('permissions', [VEHICLES.DEACTIVATE]),
     ApiBearerAuth('access-token'),
     ApiResponse({ status: HttpStatus.OK }),
     ApiResponse({ status: HttpStatus.CONFLICT, type: ErrorType }),

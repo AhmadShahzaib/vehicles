@@ -12,7 +12,7 @@ import { VehiclesResponse } from '../models/response.model';
 export default function GetByIdDecorators() {
   const GetByIdDecorators: Array<CombineDecoratorType> = [
     Get(':id'),
-    SetMetadata('permissions', [VEHICLES.GETBYID]),
+    SetMetadata('permissions', [VEHICLES.LIST]),
     ApiBearerAuth('access-token'),
     ApiResponse({ status: HttpStatus.OK, type: VehiclesResponse }),
     ApiParam({

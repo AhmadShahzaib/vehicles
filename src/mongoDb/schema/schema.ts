@@ -26,7 +26,7 @@ export const VehicleSchema = new mongoose.Schema(
     notes: { type: String },
     fuelType: { type: String, required: false },
     tenantId: { type: mongoose.Schema.Types.ObjectId },
-    vinNo: { type: String, required: true },
+    vinNo: { type: String, required: false, defaultValue: '' },
     odometerUnit: { type: String, required: true, enum: OdometerUnits },
     odometerReading: { type: Number, required: true },
     readingDateTime: { type: Date, required: true },

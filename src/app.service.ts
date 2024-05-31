@@ -30,6 +30,7 @@ export class AppService extends BaseService<VehicleDocument> {
     private readonly vehicleModel: Model<VehicleDocument>,
     @Inject('ELD_SERVICE') private readonly client: ClientProxy,
     @Inject('UNIT_SERVICE') private readonly unitClient: ClientProxy,
+    @Inject('DRIVER_SERVICE') private readonly driverClient: ClientProxy,
   ) {
     super();
     this._model = vehicleModel;
@@ -62,7 +63,7 @@ export class AppService extends BaseService<VehicleDocument> {
         { vehicleId: vehicle.vehicleId },
         {
           ...vehicle,
-          currentEld: eldDetail.eldNo || null,
+          currentEld: eldDetail.deviceName || null,
           eldId: eldDetail.id || null,
         },
         {
@@ -115,14 +116,32 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
+  updateEldIdInVehicle = async (vehicleId: string, eldId: string) => {
+    try {
+      const vehicle = await this.vehicleModel.findOne({ vehicleId: vehicleId });
+      if (vehicle) {
+        vehicle.eldId = eldId;
+        await vehicle.save();
+        return vehicle;
+      } else {
+        throw new Error('Vehicle not found');
+      }
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      throw err;
+    }
+  };
+
   populateEld = async (id: string): Promise<any> => {
     try {
       const resp = await firstValueFrom(
         this.client.send({ cmd: 'get_device_by_id' }, id),
       );
       if (resp.isError) {
-        let errorMessage = `ELD not Found Deleted from DB with id: `+ id;
-      throw new ConflictException(`ELD not Found Deleted from DB with id: `+ id);
+        let errorMessage = `ELD not Found Deleted from DB with id: ` + id;
+        throw new ConflictException(
+          `ELD not Found Deleted from DB with id: ` + id,
+        );
 
         mapMessagePatternResponseToException(resp);
       }
@@ -158,9 +177,7 @@ export class AppService extends BaseService<VehicleDocument> {
     option: any = {},
   ): Promise<VehicleDocument> => {
     try {
-      return await this.vehicleModel
-        .findById(id)
-        .and([ option]);
+      return await this.vehicleModel.findById(id).and([option]);
     } catch (err) {
       Logger.error({ message: err.message, stack: err.stack });
       Logger.log({ id });
@@ -311,7 +328,8 @@ export class AppService extends BaseService<VehicleDocument> {
       const resp = await firstValueFrom(
         this.unitClient.emit(
           { cmd: 'assign_device_to_vehicle' },
-          {isActive,
+          {
+            isActive,
             eldNo,
             vendor,
             serialNo,
@@ -406,6 +424,22 @@ export class AppService extends BaseService<VehicleDocument> {
     } catch (error) {
       Logger.error({ error });
       throw error;
+    }
+  };
+
+  populateDriver = async (id: string, option: any = {}) => {
+    try {
+      const resp = await firstValueFrom(
+        this.driverClient.send({ cmd: 'get_assigned_driver_by_vehicleId' }, id),
+      );
+      // if (resp.isError) {
+      //   mapMessagePatternResponseToException(resp);
+      // }
+      return resp;
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      Logger.log({ id });
+      throw err;
     }
   };
 }

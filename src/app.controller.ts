@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { ApiTags } from '@nestjs/swagger';
+import moment from 'moment-timezone';
 
 import { Response, Request } from 'express';
 import { MessagePattern } from '@nestjs/microservices';
@@ -119,8 +120,7 @@ export class AppController extends BaseController {
         throw new NotFoundException('Vehicle not found');
       }
 
-      for (const vehicle of vehicles){
-
+      for (const vehicle of vehicles) {
         vehicleList.push(new VehiclesResponse(vehicle));
       }
     } catch (error) {
@@ -141,6 +141,16 @@ export class AppController extends BaseController {
   }
   //
 
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'update_eldId_in_vehicle' })
+  async tcp_updateEldIdInVehicle(params: any) {
+    const response = await this.vehicleService.updateEldIdInVehicle(
+      params.vehicleId,
+      params.eldId,
+    );
+    return response;
+  }
+
   @GetDecorators()
   async getVehicles(
     @Query(new ListingParamsValidationPipe()) queryParams: ListingParams,
@@ -150,10 +160,10 @@ export class AppController extends BaseController {
     try {
       const options: FilterQuery<VehicleDocument> = {};
 
-      const { search, orderBy, orderType, limit, showUnAssigned } =
-        queryParams;
-        let {pageNo} = queryParams;
-      const { tenantId: id } = request.user ?? ({ tenantId: undefined } as any);
+      const { search, orderBy, orderType, limit, showUnAssigned } = queryParams;
+      let { pageNo } = queryParams;
+      const { tenantId: id, timeZone } =
+        request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
       let arr = [];
@@ -221,18 +231,43 @@ export class AppController extends BaseController {
 
       for (const vehicle of queryResponse) {
         const jsonVehicle = vehicle.toJSON();
+
+        let driverName = '';
+        if (jsonVehicle.assignedDrivers.length > 0) {
+          // Extracting driver id to populate driver details - START
+          // const driverId =
+          //   jsonVehicle.assignedDrivers[jsonVehicle.assignedDrivers.length - 1]
+          //     .id;
+          const driverDetails = await this.vehicleService.populateDriver(
+            jsonVehicle._id,
+          );
+          if (driverDetails?.data) {
+            driverName = `${driverDetails?.data?.firstName} ${driverDetails?.data?.lastName}`;
+          }
+        }
+        jsonVehicle.driverName = driverName;
+        // Extracting driver id to populate driver details - END
+
         if (vehicle.eldId) {
           const eldPopulated = await this.vehicleService.populateEld(
             vehicle.eldId.toString(),
           );
           jsonVehicle.eldId = eldPopulated;
-          jsonVehicle.currentEld = eldPopulated.eldNo;
+          jsonVehicle.currentEld = eldPopulated.deviceName;
         }
+        if (timeZone?.tzCode) {
+          jsonVehicle.createdAt = moment
+            .tz(jsonVehicle.createdAt, timeZone?.tzCode)
+            .format('DD/MM/YYYY h:mm a');
+        }
+
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
       }
-      if(vehicleList.length == 0 ){
-        if(pageNo > 1) {pageNo = pageNo-1 }
+      if (vehicleList.length == 0) {
+        if (pageNo > 1) {
+          pageNo = pageNo - 1;
+        }
       }
       return response.status(HttpStatus.OK).send({
         data: vehicleList,
@@ -271,7 +306,9 @@ export class AppController extends BaseController {
       const vehicle: boolean =
         await this.vehicleService.isVehicleAssignedDriver(id);
       if (vehicle) {
-        throw new ConflictException(`This Vehicle associated with the Driver`);
+        throw new ConflictException(
+          `Vehicle is already associated with the Driver`,
+        );
       }
       // const { permissions } = req.user ?? ({ permissions: undefined } as any);
       // const permission = permissions.find((permission) => {
@@ -290,7 +327,9 @@ export class AppController extends BaseController {
         const result: VehiclesResponse = new VehiclesResponse(vehicles);
         Logger.log(`status changed successfully with id:${id}`);
         return response.status(HttpStatus.OK).send({
-          message: `Vehicle is ${isActive ? "activated": "deactivated"} successfully`,
+          message: `Vehicle is ${
+            isActive ? 'activated' : 'deactivated'
+          } successfully`,
           data: result,
         });
       } else {
@@ -489,17 +528,37 @@ export class AppController extends BaseController {
       let eldDetail;
 
       // Check if requested vehicle exists
-      const vehicle = await this.vehicleService.findOne({
-        $and: [
-          
-          {
-            vehicleId: {
-              $regex: new RegExp(`^${vehicleModel.vehicleId}$`, 'i'),
-            },
-          },
-        ],
-      });
+      let option = {
+        $or: [],
+        $and:[{ tenantId: tenantId },]
+      };
+      if (vehicleModel.vinNo) {
+        option.$or.push({ vinNo: vehicleModel.vinNo });
+      }
+      if (vehicleModel.licensePlateNo) {
+        option.$or.push({ licensePlateNo: vehicleModel.licensePlateNo });
+      }
+      option.$or.push({ vehicleId: vehicleModel.vehicleId });
 
+      const vehicle = await this.vehicleService.findOne(option);
+      if (
+        vehicle &&
+        Object.keys(vehicle).length > 0 &&
+        vehicle?.vinNo &&
+        vehicle?.vinNo.toLowerCase() == vehicleModel?.vinNo.toLowerCase()
+      ) {
+        Logger.log(`Vin number already exists`);
+        throw new ConflictException(`Vin number already exists`);
+      }
+      if (
+        vehicle &&
+        vehicle.licensePlateNo &&
+        vehicle.licensePlateNo.toLowerCase() ==
+          vehicleModel?.licensePlateNo.toLowerCase()
+      ) {
+        Logger.log(`License plate number already exists`);
+        throw new ConflictException(`License plate number already exists`);
+      }
       // is eldAssigned comment as for now one ELD associate with multiple vehicle models
       // if (vehicleModel.eldId) {
       //   const isEldAssigned = await this.vehicleService.findOne({
@@ -510,10 +569,8 @@ export class AppController extends BaseController {
       //   }
       // }
       if (vehicle) {
-          throw new ConflictException(
-            `Vehicle Id already exists`,
-          );
-        }
+        throw new ConflictException(`Vehicle id already exists`);
+      }
       // If vehicle not exists
       if (!vehicle) {
         // const secSearch = await this.vehicleService.findOne({
@@ -521,7 +578,7 @@ export class AppController extends BaseController {
         //     { isDeleted: false },
         //     {
         //       $or: [
-               
+
         //         // {
         //         //   licensePlateNo: {
         //         //     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
@@ -545,7 +602,6 @@ export class AppController extends BaseController {
             tenantId,
             eldDetail,
           );
-         
 
           // The function below updates unit assignments with Vehicle and Eld
           // comment as now unit create on add driver creation time
@@ -662,14 +718,14 @@ export class AppController extends BaseController {
       const vinNo = editRequestData?.vinNo;
       const option = {
         $and: [
-          { _id: { $ne: id }, isDeleted: false },
+          { _id: { $ne: id }, isDeleted: false },{ tenantId: tenantId },
           { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
-        // $or: [
-        //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
-        //   { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-        //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
-        // ],
+        $or: [
+          //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
+          { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
+          //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+        ],
       };
       const vehicleResponseRequest = await addAndUpdate(
         this.vehicleService,
@@ -690,7 +746,7 @@ export class AppController extends BaseController {
           eldDetail = await this.vehicleService.populateEld(
             vehicleRequest.eldId,
           );
-          vehicleRequest.currentEld = eldDetail.eldNo;
+          vehicleRequest.currentEld = eldDetail.deviceName;
           vehicleDoc = await this.vehicleService.updateVehicle(
             id,
             vehicleRequest,
