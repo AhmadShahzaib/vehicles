@@ -530,7 +530,7 @@ export class AppController extends BaseController {
       // Check if requested vehicle exists
       let option = {
         $or: [],
-        $and:[{ tenantId: tenantId },]
+        $and: [{ tenantId: tenantId }],
       };
       if (vehicleModel.vinNo) {
         option.$or.push({ vinNo: vehicleModel.vinNo });
@@ -713,18 +713,18 @@ export class AppController extends BaseController {
       );
       const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
       Logger.log(`Request to update  vehicle  with param id:${id}`);
-      const { licensePlateNo, vehicleId }: EditVehiclesRequest =
+      const { licensePlateNo, vehicleId, vinNo }: EditVehiclesRequest =
         editRequestData;
-      const vinNo = editRequestData?.vinNo;
-      const option = {
+      let option = {
         $and: [
-          { _id: { $ne: id }, isDeleted: false },{ tenantId: tenantId },
-          { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
+          { _id: { $ne: id }, isDeleted: false },
+          { tenantId: tenantId },
+          // { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
         $or: [
-          //   { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
+          { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
           { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-          //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+          // { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
         ],
       };
       const vehicleResponseRequest = await addAndUpdate(
