@@ -87,6 +87,9 @@ export class VehiclesResponse extends BaseResponseType {
   @ApiProperty()
   driverName: string;
 
+  @ApiProperty()
+  autoFetchVinNo: boolean;
+
   constructor(vehicleDocument: VehicleDocument | any) {
     super();
     this.id = vehicleDocument.id;
@@ -111,5 +114,6 @@ export class VehiclesResponse extends BaseResponseType {
     this.assignedDrivers = vehicleDocument.assignedDrivers;
     this.createdAt = vehicleDocument.createdAt;
     this.driverName = vehicleDocument.driverName;
+    this.autoFetchVinNo = vehicleDocument.autoFetchVinNo;
   }
 }

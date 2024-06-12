@@ -35,6 +35,7 @@ export const VehicleSchema = new mongoose.Schema(
     mainOfficeName: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
+    autoFetchVinNo: { type: Boolean, default: false },
     assignedDrivers: [],
   },
   { timestamps: true },
