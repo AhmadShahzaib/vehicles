@@ -77,7 +77,7 @@ export class EditVehiclesRequest {
   @ApiProperty()
   @IsNotEmpty()
   @IsNumber()
-  odometerReading: Number;
+  odometerReading: number;
 
   @ApiProperty()
   @IsNotEmpty()

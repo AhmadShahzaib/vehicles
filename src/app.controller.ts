@@ -166,7 +166,7 @@ export class AppController extends BaseController {
         request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
-      let arr = [];
+      const arr = [];
       arr.push(isActive);
       if (arr.includes('true')) {
         isActive = true;
@@ -206,7 +206,7 @@ export class AppController extends BaseController {
         options['$and'] = [{ tenantId: id }];
       }
       if (showUnAssigned) {
-        let assignedVehicle = await this.vehicleService.getAssignedVehicles(
+        const assignedVehicle = await this.vehicleService.getAssignedVehicles(
           'vehicleId',
         );
         Object.assign(options, { _id: { $nin: assignedVehicle } });
@@ -528,7 +528,7 @@ export class AppController extends BaseController {
       let eldDetail;
 
       // Check if requested vehicle exists
-      let option = {
+      const option = {
         $or: [],
         $and: [{ tenantId: tenantId }],
       };
@@ -643,7 +643,7 @@ export class AppController extends BaseController {
       Logger.log(`Request to update  vehicle  with param id:${id}`);
       const { licensePlateNo, vehicleId, vinNo }: EditVehiclesRequest =
         editRequestData;
-      let option = {
+      const option = {
         $and: [
           { _id: { $ne: id }, isDeleted: false },
           { tenantId: tenantId },
@@ -662,7 +662,7 @@ export class AppController extends BaseController {
         id,
       );
       if (vehicleResponseRequest) {
-        let vehicleRequest = await uploadDocument(
+        const vehicleRequest = await uploadDocument(
           files?.vehicleDocument,
           this.awsService,
           vehicleResponseRequest,
