@@ -412,9 +412,9 @@ export class AppController extends BaseController {
   }
 
   // @AddDecorators()
-  @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'vehicleDocument', maxCount: 50 }]),
-  )
+  // @UseInterceptors(
+  //   FileFieldsInterceptor([{ name: 'vehicleDocument', maxCount: 50 }]),
+  // )
   // async addVehicle( // not using anymore
   //   @Body() vehicleModel: VehiclesRequest,
   //   @UploadedFiles()
@@ -559,121 +559,49 @@ export class AppController extends BaseController {
         Logger.log(`License plate number already exists`);
         throw new ConflictException(`License plate number already exists`);
       }
-      // is eldAssigned comment as for now one ELD associate with multiple vehicle models
-      // if (vehicleModel.eldId) {
-      //   const isEldAssigned = await this.vehicleService.findOne({
-      //     eldId: vehicleModel.eldId,
-      //   });
-      //   if (isEldAssigned) {
-      //     throw new ConflictException(`ELD already assigned!`);
-      //   }
-      // }
       if (vehicle) {
         throw new ConflictException(`Vehicle id already exists`);
       }
       // If vehicle not exists
       if (!vehicle) {
-        // const secSearch = await this.vehicleService.findOne({
-        //   $and: [
-        //     { isDeleted: false },
-        //     {
-        //       $or: [
-
-        //         // {
-        //         //   licensePlateNo: {
-        //         //     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
-        //         //   },
-        //         // },
-        //       ],
-        //     },
-        //   ],
-        // });
-        // if (secSearch) {
-        //   throw new ConflictException(
-        //     `Vehicle already exists with the same  lisencePlateNo!`,
-        //   );
-        // }
-
         if (vehicleModel.eldId) {
           // Vehicle not exists, but eldId is provided
           eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleModel.eldId = eldDetail.id || null;
+          vehicleModel.currentEld = eldDetail.deviceName || null;
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
-
-          // The function below updates unit assignments with Vehicle and Eld
-          // comment as now unit create on add driver creation time
-          // await this.vehicleService.updateVehicleAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleModel.eldId,
-          //   vehicleModel.make,
-          //   vehicleModel.licensePlateNo,
-          //   vehicleModel.vinNo,
-          // );
-          // // The fucntiion below to add device to vehicle unit assignments
-          // await this.vehicleService.updateVehicleUnitByAddDevice(
-          //   vehicleDoc.id,
-          //   tenantId,
-          //   eldDetail,
-          // );
         }
         // Vehicle not exists, and eldId is not provided
         else {
           eldDetail = { id: null, eldNo: null };
           vehicleModel.eldId = null;
           vehicleModel.currentEld = null;
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
-          // The function below updates unit assignments with Vehicle and Eld
-          // comment as now unit create on add driver creation time
-          // await this.vehicleService.updateVehicleAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleModel.eldId,
-          //   vehicleModel.make,
-          //   vehicleModel.licensePlateNo,
-          //   vehicleModel.vinNo,
-          // );
         }
       } else {
         // If vehicle exists and eld provided
         if (vehicleModel.eldId) {
           // Vehicle exists, but eldId is provided
           eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleModel.eldId = eldDetail.id || null;
+          vehicleModel.currentEld = eldDetail.deviceName || null;
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
-          // The function below updates unit assignments
-          // comment as now unit create on add driver creation time
-          // await this.vehicleService.updateVehicleAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleModel.eldId,
-          //   vehicleModel.make,
-          //   vehicleModel.licensePlateNo,
-          //   vehicleModel.vinNo,
-          // );
-          // await this.vehicleService.updateVehicleUnitByAddDevice(
-          //   vehicleDoc.id,
-          //   tenantId,
-          //   eldDetail,
-          // );
         } else {
           eldDetail = { id: null, eldNo: null };
           vehicleModel.eldId = null;
           vehicleModel.currentEld = null;
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
         }
       }
@@ -724,7 +652,7 @@ export class AppController extends BaseController {
         $or: [
           { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
           { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-          // { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+          { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
         ],
       };
       const vehicleResponseRequest = await addAndUpdate(
