@@ -11,8 +11,8 @@ export const uploadDocument = async (
 ) => {
   if (doc && doc.length > 0) {
     model.documents = [];
-    for (let item of doc) {
-      let key = await awsService.uploadFile(
+    for (const item of doc) {
+      const key = await awsService.uploadFile(
         item?.buffer,
         `${tenantId}/${model.vinNo}/vehicleDocuments/${moment().unix()}-${
           item?.originalname
