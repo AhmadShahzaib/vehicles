@@ -138,7 +138,7 @@ export class AppService extends BaseService<VehicleDocument> {
         this.client.send({ cmd: 'get_device_by_id' }, id),
       );
       if (resp.isError) {
-        let errorMessage = `ELD not Found Deleted from DB with id: ` + id;
+        const errorMessage = `ELD not Found Deleted from DB with id: ` + id;
         throw new ConflictException(
           `ELD not Found Deleted from DB with id: ` + id,
         );
@@ -317,8 +317,8 @@ export class AppService extends BaseService<VehicleDocument> {
     vendor: string,
     serialNo: string,
     eldId: string,
-    vehicleId: String,
-    manualVehicleId: String,
+    vehicleId: string,
+    manualVehicleId: string,
     deviceId: string,
     make: string,
     licensePlateNo: string,
@@ -350,7 +350,7 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
-  isDeviceAssigned = async (deviceId: String, vehicleId: String) => {
+  isDeviceAssigned = async (deviceId: string, vehicleId: string) => {
     try {
       const resp = await firstValueFrom(
         this.unitClient.send({ cmd: 'is_device_assigned' }, { deviceId }),
@@ -380,8 +380,8 @@ export class AppService extends BaseService<VehicleDocument> {
   };
 
   updateVehicleAssigned = async (
-    vehicleId: String,
-    manualVehicleId: String,
+    vehicleId: string,
+    manualVehicleId: string,
     deviceId: string,
     make: string,
     licensePlateNo: string,

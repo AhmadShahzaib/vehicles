@@ -60,7 +60,7 @@ export class VehiclesResponse extends BaseResponseType {
   odometerUnit: OdometerUnits;
 
   @ApiProperty()
-  odometerReading: Number;
+  odometerReading: number;
 
   @ApiProperty()
   readingDateTime: Date;

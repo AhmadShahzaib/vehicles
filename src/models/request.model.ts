@@ -89,7 +89,7 @@ export class VehiclesRequest {
   @Transform(({ value }) => JSON.parse(value))
   @IsNotEmpty()
   @IsNumber()
-  odometerReading: Number;
+  odometerReading: number;
 
   @ApiProperty()
   @IsNotEmpty()
