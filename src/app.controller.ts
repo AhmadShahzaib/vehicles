@@ -51,6 +51,7 @@ import { addAndUpdate } from './shared/addUpdate.validator';
 import VehicleDocument from 'mongoDb/document/document';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { uploadDocument } from 'shared/documentUpload';
+import UpdateVINByIdDecorators from 'decorators/updateVINById';
 
 @Controller('vehicles')
 @ApiTags('Vehicles')
@@ -731,9 +732,88 @@ export class AppController extends BaseController {
     }
   }
 
+  // @----------------------update Vehicle VIN auto Fetch Mobile Side-------------------------------
+  @UpdateVINByIdDecorators()
+  async updateAutoVIN(
+    @Body() editRequestData: any,
+    @Res() response: Response,
+    @Req() request: Request,
+  ) {
+    try {
+      Logger.log(
+        `${request.method} request received from ${request.ip} for ${
+          request.originalUrl
+        } by: ${
+          !response.locals.user ? 'Unauthorized User' : response.locals.user.id
+        }`,
+      );
+      const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
+      const { id, autoFetchVinNo, vinNo } = editRequestData;
+      const option = {
+        $and: [
+          { _id: { $ne: id }, isDeleted: false },
+          { tenantId: tenantId },
+          // { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
+        ],
+        $or: [{ vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } }],
+      };
+      const vehicle = await this.vehicleService.findOne(option);
+      if (
+        vehicle &&
+        Object.keys(vehicle).length > 0 &&
+        vehicle?.vinNo &&
+        vehicle?.vinNo.toLowerCase() == vinNo.toLowerCase()
+      ) {
+        Logger.log(`Vin number already exists`);
+        throw new ConflictException(`Vin number already exists`);
+      }
+      let vehicleDoc;
+      if (id !== '' && id !== undefined) {
+        vehicleDoc = await this.vehicleService.findByIdAndUpdate(id, {
+          autoFetchVinNo,
+          vinNo,
+        });
+      }
+      if (vehicleDoc && Object.keys(vehicleDoc).length > 0) {
+        Logger.log(`vehicle data update successfully with id:${id}`);
+        const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
+        return response.status(HttpStatus.OK).send({
+          message: 'Vehicle has been updated successfully',
+          data: result,
+        });
+      } else {
+        Logger.log(`vehicle not update with id : ${id}`);
+        throw new NotFoundException(`${id} does not exist`);
+      }
+    } catch (error) {
+      Logger.error({ message: error.message, stack: error.stack });
+      throw error;
+    }
+  }
   // @------------------- Edit vehicle API controller -------------------
 
   // @------------------- Delete Vehicle API controller -------------------
 
   // @------------------- Get ONE vehicle API controller -------------------
+
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'get_assigned_vehicle_by_deviceId' })
+  async tcp_getAssignedVehicleByDeviceId(id: string): Promise<any> {
+    let vehicle;
+    let exception;
+    try {
+      const option: FilterQuery<VehicleDocument> = {
+        $and: [{ eldId: id }, { isActive: true }],
+      };
+      vehicle = await this.vehicleService.findOne(option);
+
+      if (!vehicle) {
+        throw new NotFoundException('Driver not found');
+      }
+    } catch (error) {
+      exception = error;
+    }
+
+    return vehicle ?? exception;
+  }
 }
