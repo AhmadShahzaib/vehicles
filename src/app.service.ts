@@ -1,5 +1,5 @@
 import { EditVehiclesRequest } from './models/editRequest.model';
-import { Model, MongooseError, Schema } from 'mongoose';
+import { FilterQuery, Model, MongooseError, Schema } from 'mongoose';
 import {
   Injectable,
   Logger,
@@ -172,6 +172,26 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
+  vehicleStatusUpdateEldUnAssign = async (
+    id: string,
+    status: boolean,
+  ): Promise<VehicleDocument> => {
+    try {
+      return await this.vehicleModel
+        .findByIdAndUpdate(
+          id,
+          { isActive: status, eldId: null, currentEld: null },
+          {
+            new: true,
+          },
+        )
+        .and([{ isDeleted: false }]);
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      throw err;
+    }
+  };
+
   findVehicleById = async (
     id: string,
     option: any = {},
@@ -277,6 +297,19 @@ export class AppService extends BaseService<VehicleDocument> {
     } catch (err) {
       Logger.error({ message: err.message, stack: err.stack });
       Logger.log({ options });
+      throw err;
+    }
+  };
+
+  findAssigned = async (
+    options: FilterQuery<VehicleDocument>,
+    key: string,
+  ): Promise<string[]> => {
+    try {
+      options.isDeleted = false;
+      return await this.vehicleModel.find(options, { [key]: 1, _id: 0 });
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
       throw err;
     }
   };
