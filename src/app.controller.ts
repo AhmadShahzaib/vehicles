@@ -130,6 +130,27 @@ export class AppController extends BaseController {
 
     return vehicleList ?? exception;
   }
+
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'get_all_assigned_devices' })
+  async tcp_getAllAssignedDevices(key: string): Promise<any> {
+    try {
+      let options: FilterQuery<VehicleDocument>;
+      if (key == 'eldId') {
+        options = { [key]: { $ne: null }, _id: { $ne: null } };
+      }
+      const assign = await this.vehicleService.findAssigned(options, key);
+      if (assign && assign.length > 0) {
+        return assign.map(function (item) {
+          return item[key];
+        });
+      } else {
+        return assign;
+      }
+    } catch (exception) {
+      return exception;
+    }
+  }
   //
   @UseInterceptors(new MessagePatternResponseInterceptor())
   @MessagePattern({ cmd: 'assign_driverId_to_vehicle' })
@@ -322,7 +343,19 @@ export class AppController extends BaseController {
       //   if (!isActive && !permission.canDeactivate) {
       //     throw new ForbiddenException("Don't have Permission to DeActivate");
       //   }
-      const vehicles = await this.vehicleService.vehicleStatus(id, isActive);
+      const getVehicle = await this.vehicleService.findVehicleById(id, {
+        isActive: true,
+      });
+      let vehicles;
+      if (getVehicle?.eldId && !isActive) {
+        vehicles = await this.vehicleService.vehicleStatusUpdateEldUnAssign(
+          id,
+          isActive,
+        );
+      } else {
+        vehicles = await this.vehicleService.vehicleStatus(id, isActive);
+      }
+
       if (vehicles && Object.keys(vehicles).length > 0) {
         await this.vehicleService.updateStatusInUnitService(id, isActive);
         const result: VehiclesResponse = new VehiclesResponse(vehicles);
@@ -815,5 +848,23 @@ export class AppController extends BaseController {
     }
 
     return vehicle ?? exception;
+  }
+
+  // -----------------------------Check Device is assigned to Vehicle-----------------------------------
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'is_device_assigned_in_Vehicle' })
+  async tcp_isDeviceAssigned(eldId: string): Promise<any> {
+    try {
+      const options: FilterQuery<VehicleDocument> = {
+        $and: [{ eldId }, { vehicleId: { $ne: null } }],
+      };
+      const vehicle = await this.vehicleService.findOne(options);
+      if (!vehicle) {
+        return false;
+      }
+      return true;
+    } catch (exception) {
+      return exception;
+    }
   }
 }
