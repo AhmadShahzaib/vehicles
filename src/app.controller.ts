@@ -567,12 +567,20 @@ export class AppController extends BaseController {
         $and: [{ tenantId: tenantId }],
       };
       if (vehicleModel.vinNo) {
-        option.$or.push({ vinNo: vehicleModel.vinNo });
+        option.$or.push({
+          vinNo: { $regex: new RegExp(`^${vehicleModel.vinNo}`, 'i') },
+        });
       }
       if (vehicleModel.licensePlateNo) {
-        option.$or.push({ licensePlateNo: vehicleModel.licensePlateNo });
+        option.$or.push({
+          licensePlateNo: {
+            $regex: new RegExp(`^${vehicleModel.licensePlateNo}`, 'i'),
+          },
+        });
       }
-      option.$or.push({ vehicleId: vehicleModel.vehicleId });
+      option.$or.push({
+        vehicleId: { $regex: new RegExp(`^${vehicleModel.vehicleId}`, 'i') },
+      });
 
       const vehicle = await this.vehicleService.findOne(option);
       if (
@@ -690,12 +698,16 @@ export class AppController extends BaseController {
         // ],
       };
       if (vinNo) {
-        option.$or.push({ vinNo: vinNo });
+        option.$or.push({ vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } });
       }
       if (licensePlateNo) {
-        option.$or.push({ licensePlateNo: licensePlateNo });
+        option.$or.push({
+          licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') },
+        });
       }
-      option.$or.push({ vehicleId: vehicleId });
+      option.$or.push({
+        vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') },
+      });
       const vehicleResponseRequest = await addAndUpdate(
         this.vehicleService,
         editRequestData,
