@@ -89,7 +89,7 @@ export class VehiclesRequest {
   @Transform(({ value }) => JSON.parse(value))
   @IsNotEmpty()
   @IsNumber()
-  odometerReading: Number;
+  odometerReading: number;
 
   @ApiProperty()
   @IsNotEmpty()
@@ -115,4 +115,13 @@ export class VehiclesRequest {
   @IsOptional()
   @IsBoolean()
   isActive: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Indicates whether the VIN is auto from mobile side',
+    type: Boolean,
+  })
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsOptional()
+  @IsBoolean()
+  autoFetchVinNo?: boolean;
 }

@@ -51,6 +51,7 @@ import { addAndUpdate } from './shared/addUpdate.validator';
 import VehicleDocument from 'mongoDb/document/document';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { uploadDocument } from 'shared/documentUpload';
+import UpdateVINByIdDecorators from 'decorators/updateVINById';
 
 @Controller('vehicles')
 @ApiTags('Vehicles')
@@ -129,6 +130,27 @@ export class AppController extends BaseController {
 
     return vehicleList ?? exception;
   }
+
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'get_all_assigned_devices' })
+  async tcp_getAllAssignedDevices(key: string): Promise<any> {
+    try {
+      let options: FilterQuery<VehicleDocument>;
+      if (key == 'eldId') {
+        options = { [key]: { $ne: null }, _id: { $ne: null } };
+      }
+      const assign = await this.vehicleService.findAssigned(options, key);
+      if (assign && assign.length > 0) {
+        return assign.map(function (item) {
+          return item[key];
+        });
+      } else {
+        return assign;
+      }
+    } catch (exception) {
+      return exception;
+    }
+  }
   //
   @UseInterceptors(new MessagePatternResponseInterceptor())
   @MessagePattern({ cmd: 'assign_driverId_to_vehicle' })
@@ -166,7 +188,7 @@ export class AppController extends BaseController {
         request.user ?? ({ tenantId: undefined } as any);
 
       let isActive = queryParams.isActive;
-      let arr = [];
+      const arr = [];
       arr.push(isActive);
       if (arr.includes('true')) {
         isActive = true;
@@ -206,7 +228,7 @@ export class AppController extends BaseController {
         options['$and'] = [{ tenantId: id }];
       }
       if (showUnAssigned) {
-        let assignedVehicle = await this.vehicleService.getAssignedVehicles(
+        const assignedVehicle = await this.vehicleService.getAssignedVehicles(
           'vehicleId',
         );
         Object.assign(options, { _id: { $nin: assignedVehicle } });
@@ -321,7 +343,19 @@ export class AppController extends BaseController {
       //   if (!isActive && !permission.canDeactivate) {
       //     throw new ForbiddenException("Don't have Permission to DeActivate");
       //   }
-      const vehicles = await this.vehicleService.vehicleStatus(id, isActive);
+      const getVehicle = await this.vehicleService.findVehicleById(id, {
+        isActive: true,
+      });
+      let vehicles;
+      if (getVehicle?.eldId && !isActive) {
+        vehicles = await this.vehicleService.vehicleStatusUpdateEldUnAssign(
+          id,
+          isActive,
+        );
+      } else {
+        vehicles = await this.vehicleService.vehicleStatus(id, isActive);
+      }
+
       if (vehicles && Object.keys(vehicles).length > 0) {
         await this.vehicleService.updateStatusInUnitService(id, isActive);
         const result: VehiclesResponse = new VehiclesResponse(vehicles);
@@ -412,9 +446,9 @@ export class AppController extends BaseController {
   }
 
   // @AddDecorators()
-  @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'vehicleDocument', maxCount: 50 }]),
-  )
+  // @UseInterceptors(
+  //   FileFieldsInterceptor([{ name: 'vehicleDocument', maxCount: 50 }]),
+  // )
   // async addVehicle( // not using anymore
   //   @Body() vehicleModel: VehiclesRequest,
   //   @UploadedFiles()
@@ -528,7 +562,7 @@ export class AppController extends BaseController {
       let eldDetail;
 
       // Check if requested vehicle exists
-      let option = {
+      const option = {
         $or: [],
         $and: [{ tenantId: tenantId }],
       };
@@ -559,121 +593,49 @@ export class AppController extends BaseController {
         Logger.log(`License plate number already exists`);
         throw new ConflictException(`License plate number already exists`);
       }
-      // is eldAssigned comment as for now one ELD associate with multiple vehicle models
-      // if (vehicleModel.eldId) {
-      //   const isEldAssigned = await this.vehicleService.findOne({
-      //     eldId: vehicleModel.eldId,
-      //   });
-      //   if (isEldAssigned) {
-      //     throw new ConflictException(`ELD already assigned!`);
-      //   }
-      // }
       if (vehicle) {
         throw new ConflictException(`Vehicle id already exists`);
       }
       // If vehicle not exists
       if (!vehicle) {
-        // const secSearch = await this.vehicleService.findOne({
-        //   $and: [
-        //     { isDeleted: false },
-        //     {
-        //       $or: [
-
-        //         // {
-        //         //   licensePlateNo: {
-        //         //     $regex: new RegExp(`^${vehicleModel.licensePlateNo}$`, 'i'),
-        //         //   },
-        //         // },
-        //       ],
-        //     },
-        //   ],
-        // });
-        // if (secSearch) {
-        //   throw new ConflictException(
-        //     `Vehicle already exists with the same  lisencePlateNo!`,
-        //   );
-        // }
-
         if (vehicleModel.eldId) {
           // Vehicle not exists, but eldId is provided
           eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleModel.eldId = eldDetail.id || null;
+          vehicleModel.currentEld = eldDetail.deviceName || null;
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
-
-          // The function below updates unit assignments with Vehicle and Eld
-          // comment as now unit create on add driver creation time
-          // await this.vehicleService.updateVehicleAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleModel.eldId,
-          //   vehicleModel.make,
-          //   vehicleModel.licensePlateNo,
-          //   vehicleModel.vinNo,
-          // );
-          // // The fucntiion below to add device to vehicle unit assignments
-          // await this.vehicleService.updateVehicleUnitByAddDevice(
-          //   vehicleDoc.id,
-          //   tenantId,
-          //   eldDetail,
-          // );
         }
         // Vehicle not exists, and eldId is not provided
         else {
           eldDetail = { id: null, eldNo: null };
           vehicleModel.eldId = null;
           vehicleModel.currentEld = null;
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
-          // The function below updates unit assignments with Vehicle and Eld
-          // comment as now unit create on add driver creation time
-          // await this.vehicleService.updateVehicleAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleModel.eldId,
-          //   vehicleModel.make,
-          //   vehicleModel.licensePlateNo,
-          //   vehicleModel.vinNo,
-          // );
         }
       } else {
         // If vehicle exists and eld provided
         if (vehicleModel.eldId) {
           // Vehicle exists, but eldId is provided
           eldDetail = await this.vehicleService.populateEld(vehicleModel.eldId);
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleModel.eldId = eldDetail.id || null;
+          vehicleModel.currentEld = eldDetail.deviceName || null;
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
-          // The function below updates unit assignments
-          // comment as now unit create on add driver creation time
-          // await this.vehicleService.updateVehicleAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleModel.eldId,
-          //   vehicleModel.make,
-          //   vehicleModel.licensePlateNo,
-          //   vehicleModel.vinNo,
-          // );
-          // await this.vehicleService.updateVehicleUnitByAddDevice(
-          //   vehicleDoc.id,
-          //   tenantId,
-          //   eldDetail,
-          // );
         } else {
           eldDetail = { id: null, eldNo: null };
           vehicleModel.eldId = null;
           vehicleModel.currentEld = null;
-          vehicleDoc = await this.vehicleService.addOrUpdateVehicle(
+          vehicleDoc = await this.vehicleService.addVehicle(
             vehicleModel,
             tenantId,
-            eldDetail,
           );
         }
       }
@@ -715,7 +677,7 @@ export class AppController extends BaseController {
       Logger.log(`Request to update  vehicle  with param id:${id}`);
       const { licensePlateNo, vehicleId, vinNo }: EditVehiclesRequest =
         editRequestData;
-      let option = {
+      const option = {
         $and: [
           { _id: { $ne: id }, isDeleted: false },
           { tenantId: tenantId },
@@ -724,7 +686,7 @@ export class AppController extends BaseController {
         $or: [
           { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
           { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-          // { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+          { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
         ],
       };
       const vehicleResponseRequest = await addAndUpdate(
@@ -734,7 +696,7 @@ export class AppController extends BaseController {
         id,
       );
       if (vehicleResponseRequest) {
-        let vehicleRequest = await uploadDocument(
+        const vehicleRequest = await uploadDocument(
           files?.vehicleDocument,
           this.awsService,
           vehicleResponseRequest,
@@ -803,9 +765,106 @@ export class AppController extends BaseController {
     }
   }
 
+  // @----------------------update Vehicle VIN auto Fetch Mobile Side-------------------------------
+  @UpdateVINByIdDecorators()
+  async updateAutoVIN(
+    @Body() editRequestData: any,
+    @Res() response: Response,
+    @Req() request: Request,
+  ) {
+    try {
+      Logger.log(
+        `${request.method} request received from ${request.ip} for ${
+          request.originalUrl
+        } by: ${
+          !response.locals.user ? 'Unauthorized User' : response.locals.user.id
+        }`,
+      );
+      const { tenantId } = request.user ?? ({ tenantId: undefined } as any);
+      const { id, autoFetchVinNo, vinNo } = editRequestData;
+      const option = {
+        $and: [
+          { _id: { $ne: id }, isDeleted: false },
+          { tenantId: tenantId },
+          // { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
+        ],
+        $or: [{ vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } }],
+      };
+      const vehicle = await this.vehicleService.findOne(option);
+      if (
+        vehicle &&
+        Object.keys(vehicle).length > 0 &&
+        vehicle?.vinNo &&
+        vehicle?.vinNo.toLowerCase() == vinNo.toLowerCase()
+      ) {
+        Logger.log(`Vin number already exists`);
+        throw new ConflictException(`Vin number already exists`);
+      }
+      let vehicleDoc;
+      if (id !== '' && id !== undefined) {
+        vehicleDoc = await this.vehicleService.findByIdAndUpdate(id, {
+          autoFetchVinNo,
+          vinNo,
+        });
+      }
+      if (vehicleDoc && Object.keys(vehicleDoc).length > 0) {
+        Logger.log(`vehicle data update successfully with id:${id}`);
+        const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
+        return response.status(HttpStatus.OK).send({
+          message: 'Vehicle has been updated successfully',
+          data: result,
+        });
+      } else {
+        Logger.log(`vehicle not update with id : ${id}`);
+        throw new NotFoundException(`${id} does not exist`);
+      }
+    } catch (error) {
+      Logger.error({ message: error.message, stack: error.stack });
+      throw error;
+    }
+  }
   // @------------------- Edit vehicle API controller -------------------
 
   // @------------------- Delete Vehicle API controller -------------------
 
   // @------------------- Get ONE vehicle API controller -------------------
+
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'get_assigned_vehicle_by_deviceId' })
+  async tcp_getAssignedVehicleByDeviceId(id: string): Promise<any> {
+    let vehicle;
+    let exception;
+    try {
+      const option: FilterQuery<VehicleDocument> = {
+        $and: [{ eldId: id }, { isActive: true }],
+      };
+      vehicle = await this.vehicleService.findOne(option);
+
+      if (!vehicle) {
+        throw new NotFoundException('Driver not found');
+      }
+    } catch (error) {
+      exception = error;
+    }
+
+    return vehicle ?? exception;
+  }
+
+  // -----------------------------Check Device is assigned to Vehicle-----------------------------------
+  @UseInterceptors(new MessagePatternResponseInterceptor())
+  @MessagePattern({ cmd: 'is_device_assigned_in_Vehicle' })
+  async tcp_isDeviceAssigned(eldId: string): Promise<any> {
+    try {
+      const options: FilterQuery<VehicleDocument> = {
+        $and: [{ eldId }, { vehicleId: { $ne: null } }],
+      };
+      const vehicle = await this.vehicleService.findOne(options);
+      if (!vehicle) {
+        return false;
+      }
+      return true;
+    } catch (exception) {
+      return exception;
+    }
+  }
 }

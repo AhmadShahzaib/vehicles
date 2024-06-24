@@ -1,5 +1,5 @@
 import { EditVehiclesRequest } from './models/editRequest.model';
-import { Model, MongooseError, Schema } from 'mongoose';
+import { FilterQuery, Model, MongooseError, Schema } from 'mongoose';
 import {
   Injectable,
   Logger,
@@ -138,7 +138,7 @@ export class AppService extends BaseService<VehicleDocument> {
         this.client.send({ cmd: 'get_device_by_id' }, id),
       );
       if (resp.isError) {
-        let errorMessage = `ELD not Found Deleted from DB with id: ` + id;
+        const errorMessage = `ELD not Found Deleted from DB with id: ` + id;
         throw new ConflictException(
           `ELD not Found Deleted from DB with id: ` + id,
         );
@@ -161,6 +161,26 @@ export class AppService extends BaseService<VehicleDocument> {
         .findByIdAndUpdate(
           id,
           { isActive: status },
+          {
+            new: true,
+          },
+        )
+        .and([{ isDeleted: false }]);
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      throw err;
+    }
+  };
+
+  vehicleStatusUpdateEldUnAssign = async (
+    id: string,
+    status: boolean,
+  ): Promise<VehicleDocument> => {
+    try {
+      return await this.vehicleModel
+        .findByIdAndUpdate(
+          id,
+          { isActive: status, eldId: null, currentEld: null },
           {
             new: true,
           },
@@ -281,6 +301,19 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
+  findAssigned = async (
+    options: FilterQuery<VehicleDocument>,
+    key: string,
+  ): Promise<string[]> => {
+    try {
+      options.isDeleted = false;
+      return await this.vehicleModel.find(options, { [key]: 1, _id: 0 });
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      throw err;
+    }
+  };
+
   deleteOne = async (id: string) => {
     try {
       return await this.vehicleModel.findByIdAndUpdate(id, { isDeleted: true });
@@ -317,8 +350,8 @@ export class AppService extends BaseService<VehicleDocument> {
     vendor: string,
     serialNo: string,
     eldId: string,
-    vehicleId: String,
-    manualVehicleId: String,
+    vehicleId: string,
+    manualVehicleId: string,
     deviceId: string,
     make: string,
     licensePlateNo: string,
@@ -350,7 +383,7 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
-  isDeviceAssigned = async (deviceId: String, vehicleId: String) => {
+  isDeviceAssigned = async (deviceId: string, vehicleId: string) => {
     try {
       const resp = await firstValueFrom(
         this.unitClient.send({ cmd: 'is_device_assigned' }, { deviceId }),
@@ -380,8 +413,8 @@ export class AppService extends BaseService<VehicleDocument> {
   };
 
   updateVehicleAssigned = async (
-    vehicleId: String,
-    manualVehicleId: String,
+    vehicleId: string,
+    manualVehicleId: string,
     deviceId: string,
     make: string,
     licensePlateNo: string,

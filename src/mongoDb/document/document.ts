@@ -19,8 +19,9 @@ export default interface VehicleDocument extends Document {
   notes: string;
   tenantId?: string;
   vinNo: string;
+  autoFetchVinNo: boolean;
   odometerUnit: string;
-  odometerReading: Number;
+  odometerReading: number;
   readingDateTime: Date;
   inspectionForm: string;
   terminalName: string;
