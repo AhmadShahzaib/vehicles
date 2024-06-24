@@ -683,12 +683,19 @@ export class AppController extends BaseController {
           { tenantId: tenantId },
           // { vehicleId: { $regex: new RegExp(`^${vehicleId}$`, 'i') } },
         ],
-        $or: [
-          { vinNo: { $regex: new RegExp(`^${vinNo}`, 'i') } },
-          { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
-          { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
-        ],
+        $or: [],
+
+        //   { licensePlateNo: { $regex: new RegExp(`^${licensePlateNo}`, 'i') } },
+        //   { vehicleId: { $regex: new RegExp(`^${vehicleId}`, 'i') } },
+        // ],
       };
+      if (vinNo) {
+        option.$or.push({ vinNo: vinNo });
+      }
+      if (licensePlateNo) {
+        option.$or.push({ licensePlateNo: licensePlateNo });
+      }
+      option.$or.push({ vehicleId: vehicleId });
       const vehicleResponseRequest = await addAndUpdate(
         this.vehicleService,
         editRequestData,
