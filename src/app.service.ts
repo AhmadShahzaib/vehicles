@@ -225,7 +225,7 @@ export class AppService extends BaseService<VehicleDocument> {
     let driverFlag = false;
 
     const isVehicle = await this.vehicleModel.findOne({
-      vehicleId: vehicle.vehicleId,
+      _id: vehicle.id,
     });
     if (isVehicle) {
       if (vehicle.assignedDrivers.length > 0)
