@@ -116,11 +116,20 @@ export class AppService extends BaseService<VehicleDocument> {
     }
   };
 
-  updateEldIdInVehicle = async (vehicleId: string, eldId: string) => {
+  updateEldIdInVehicle = async (
+    vehicleId: string,
+    tenantId,
+    eldId: string,
+    deviceName: string,
+  ) => {
     try {
-      const vehicle = await this.vehicleModel.findOne({ vehicleId: vehicleId });
+      const vehicle = await this.vehicleModel.findOne({
+        vehicleId: vehicleId,
+        tenantId: tenantId,
+      });
       if (vehicle) {
         vehicle.eldId = eldId;
+        vehicle.currentEld = deviceName;
         await vehicle.save();
         return vehicle;
       } else {

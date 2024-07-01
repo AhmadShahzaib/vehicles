@@ -168,7 +168,9 @@ export class AppController extends BaseController {
   async tcp_updateEldIdInVehicle(params: any) {
     const response = await this.vehicleService.updateEldIdInVehicle(
       params.vehicleId,
+      params.tenantId,
       params.eldId,
+      params.deviceName,
     );
     return response;
   }
