@@ -228,11 +228,14 @@ export class AppController extends BaseController {
         options['$and'] = [{ tenantId: id }];
       }
       if (showUnAssigned) {
+        Logger.log("before unit fetch")
         const assignedVehicle = await this.vehicleService.getAssignedVehicles(
           'vehicleId',
         );
         Object.assign(options, { _id: { $nin: assignedVehicle } });
       }
+      Logger.log("after unit fetch")
+
       const query = this.vehicleService.find(options);
 
       if (orderBy && sortableAttributes.includes(orderBy)) {
@@ -260,6 +263,8 @@ export class AppController extends BaseController {
           // const driverId =
           //   jsonVehicle.assignedDrivers[jsonVehicle.assignedDrivers.length - 1]
           //     .id;
+        Logger.log("before driver populate")
+
           const driverDetails = await this.vehicleService.populateDriver(
             jsonVehicle._id,
           );
