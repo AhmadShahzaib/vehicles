@@ -276,6 +276,7 @@ export class AppController extends BaseController {
         }
         jsonVehicle.driverName = driverName;
         // Extracting driver id to populate driver details - END
+        Logger.log("after driver populate")
 
         if (vehicle.eldId) {
           const eldPopulated = await this.vehicleService.populateEld(
@@ -289,6 +290,7 @@ export class AppController extends BaseController {
             .tz(jsonVehicle.createdAt, timeZone?.tzCode)
             .format('DD/MM/YYYY h:mm a');
         }
+        Logger.log("after eld populate")
 
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
