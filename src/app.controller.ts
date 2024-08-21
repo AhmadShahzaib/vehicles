@@ -230,11 +230,14 @@ export class AppController extends BaseController {
         options['$and'] = [{ tenantId: id }];
       }
       if (showUnAssigned) {
+        Logger.log("before unit fetch")
         const assignedVehicle = await this.vehicleService.getAssignedVehicles(
           'vehicleId',
         );
         Object.assign(options, { _id: { $nin: assignedVehicle } });
       }
+      Logger.log("after unit fetch")
+
       const query = this.vehicleService.find(options);
 
       if (orderBy && sortableAttributes.includes(orderBy)) {
@@ -262,6 +265,8 @@ export class AppController extends BaseController {
           // const driverId =
           //   jsonVehicle.assignedDrivers[jsonVehicle.assignedDrivers.length - 1]
           //     .id;
+        Logger.log("before driver populate")
+
           const driverDetails = await this.vehicleService.populateDriver(
             jsonVehicle._id,
           );
@@ -271,6 +276,7 @@ export class AppController extends BaseController {
         }
         jsonVehicle.driverName = driverName;
         // Extracting driver id to populate driver details - END
+        Logger.log("after driver populate")
 
         if (vehicle.eldId) {
           const eldPopulated = await this.vehicleService.populateEld(
@@ -284,6 +290,7 @@ export class AppController extends BaseController {
             .tz(jsonVehicle.createdAt, timeZone?.tzCode)
             .format('DD/MM/YYYY h:mm a');
         }
+        Logger.log("after eld populate")
 
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
