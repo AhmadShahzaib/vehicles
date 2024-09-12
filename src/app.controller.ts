@@ -36,6 +36,8 @@ import DeleteDecorators from './decorators/delete';
 import GetByIdDecorators from './decorators/getById';
 import UpdateByIdDecorators from './decorators/updateById';
 import GetDecorators from './decorators/get';
+import GetDefaultDecorators from './decorators/getDefault';
+
 import IsActiveDecorators from './decorators/isActive';
 import { IsActive } from './models/isActive.model';
 import { vehicleById } from './shared/vehicleById';
@@ -168,13 +170,14 @@ export class AppController extends BaseController {
   async tcp_updateEldIdInVehicle(params: any) {
     const response = await this.vehicleService.updateEldIdInVehicle(
       params.vehicleId,
+      params.tenantId,
       params.eldId,
+      params.deviceName,
     );
     return response;
   }
-
-  @GetDecorators()
-  async getVehicles(
+  @GetDefaultDecorators()
+  async getDefaultVehicles(
     @Query(new ListingParamsValidationPipe()) queryParams: ListingParams,
     @Req() request: Request,
     @Res() response: Response,
@@ -282,6 +285,147 @@ export class AppController extends BaseController {
             .tz(jsonVehicle.createdAt, timeZone?.tzCode)
             .format('DD/MM/YYYY h:mm a');
         }
+
+        jsonVehicle.id = vehicle.id;
+        vehicleList.push(new VehiclesResponse(jsonVehicle));
+      }
+      if (vehicleList.length == 0) {
+        if (pageNo > 1) {
+          pageNo = pageNo - 1;
+        }
+      }
+      return response.status(HttpStatus.OK).send({
+        data: vehicleList,
+        total,
+        pageNo: pageNo ?? 1,
+        last_page: Math.ceil(
+          total /
+            (limit && limit.toString().toLowerCase() === 'all'
+              ? total
+              : limit ?? 10),
+        ),
+      });
+    } catch (err) {
+      Logger.error({ message: err.message, stack: err.stack });
+      throw err;
+    }
+  }
+  @GetDecorators()
+  async getVehicles(
+    @Query(new ListingParamsValidationPipe()) queryParams: ListingParams,
+    @Req() request: Request,
+    @Res() response: Response,
+  ) {
+    try {
+      const options: FilterQuery<VehicleDocument> = {};
+
+      const { search, orderBy, orderType, limit, showUnAssigned } = queryParams;
+      let { pageNo } = queryParams;
+      const { tenantId: id, timeZone } =
+        request.user ?? ({ tenantId: undefined } as any);
+
+      let isActive = queryParams.isActive;
+      const arr = [];
+      arr.push(isActive);
+      if (arr.includes('true')) {
+        isActive = true;
+      } else {
+        isActive = false;
+      }
+
+      if (search) {
+        options['$or'] = [];
+
+        if (Types.ObjectId.isValid(search)) {
+          searchableIds.forEach((attribute) => {
+            options['$or'].push({ [attribute]: new RegExp(search, 'i') });
+          });
+        }
+        searchableAttributes.forEach((attribute) => {
+          options['$or'].push({ [attribute]: new RegExp(search, 'i') });
+        });
+        if (arr[0]) {
+          options['$and'] = [];
+          isActiveinActive.forEach((attribute) => {
+            options['$and'].push({ [attribute]: isActive });
+          });
+        }
+      } else {
+        if (arr[0]) {
+          options['$or'] = [];
+
+          isActiveinActive.forEach((attribute) => {
+            options['$or'].push({ [attribute]: isActive });
+          });
+        }
+      }
+      if (options.hasOwnProperty('$and')) {
+        options['$and'].push({ tenantId: id });
+      } else {
+        options['$and'] = [{ tenantId: id }];
+      }
+      if (showUnAssigned) {
+        Logger.log('before unit fetch');
+        const assignedVehicle = await this.vehicleService.getAssignedVehicles(
+          'vehicleId',
+        );
+        Object.assign(options, { _id: { $nin: assignedVehicle } });
+      }
+      Logger.log('after unit fetch');
+
+      const query = this.vehicleService.find(options);
+
+      if (orderBy && sortableAttributes.includes(orderBy)) {
+        query.collation({ locale: 'en' }).sort({ [orderBy]: orderType ?? 1 });
+      } else {
+        query.sort({ createdAt: 1 });
+      }
+
+      const total = await this.vehicleService.count(options);
+
+      let queryResponse;
+      if (!limit || !isNaN(limit)) {
+        query.skip(((pageNo ?? 1) - 1) * (limit ?? 10)).limit(limit ?? 10);
+      }
+      queryResponse = await query.exec();
+
+      const vehicleList: VehiclesResponse[] = [];
+
+      for (const vehicle of queryResponse) {
+        const jsonVehicle = vehicle.toJSON();
+
+        let driverName = '';
+        if (jsonVehicle.assignedDrivers.length > 0) {
+          // Extracting driver id to populate driver details - START
+          // const driverId =
+          //   jsonVehicle.assignedDrivers[jsonVehicle.assignedDrivers.length - 1]
+          //     .id;
+          Logger.log('before driver populate');
+
+          const driverDetails = await this.vehicleService.populateDriver(
+            jsonVehicle._id,
+          );
+          if (driverDetails?.data) {
+            driverName = `${driverDetails?.data?.firstName} ${driverDetails?.data?.lastName}`;
+          }
+        }
+        jsonVehicle.driverName = driverName;
+        // Extracting driver id to populate driver details - END
+        Logger.log('after driver populate');
+
+        if (vehicle.eldId) {
+          const eldPopulated = await this.vehicleService.populateEld(
+            vehicle.eldId.toString(),
+          );
+          jsonVehicle.eldId = eldPopulated;
+          jsonVehicle.currentEld = eldPopulated.deviceName;
+        }
+        if (timeZone?.tzCode) {
+          jsonVehicle.createdAt = moment
+            .tz(jsonVehicle.createdAt, timeZone?.tzCode)
+            .format('DD/MM/YYYY h:mm a');
+        }
+        Logger.log('after eld populate');
 
         jsonVehicle.id = vehicle.id;
         vehicleList.push(new VehiclesResponse(jsonVehicle));
@@ -738,7 +882,6 @@ export class AppController extends BaseController {
             eldDetail.vendor,
             eldDetail.serialNo,
             eldDetail.id,
-
             vehicleDoc.id,
             vehicleDoc.vehicleId,
             vehicleRequest.eldId,
@@ -754,21 +897,24 @@ export class AppController extends BaseController {
             id,
             vehicleRequest,
           );
+          await this.vehicleService.updateDeviceAssigned(
+            (eldDetail.isActive = false),
+            eldDetail.eldNo,
+            eldDetail.vendor,
+            (eldDetail.serialNo = ''),
+            eldDetail.id,
+            vehicleDoc.id,
+            vehicleDoc.vehicleId,
+            vehicleDoc.eldId,
+            vehicleDoc.make,
+            vehicleDoc.licensePlateNo,
+            vehicleDoc.vinNo,
+          );
         }
 
         if (vehicleDoc && Object.keys(vehicleDoc).length > 0) {
           Logger.log(`vehicle data update successfully with id:${id}`);
           const result: VehiclesResponse = new VehiclesResponse(vehicleDoc);
-
-          // await this.vehicleService.updateDeviceAssigned(
-          //   vehicleDoc.id,
-          //   vehicleDoc.vehicleId,
-          //   vehicleDoc.eldId,
-          //   vehicleDoc.make,
-          //   vehicleDoc.licensePlateNo,
-          //   vehicleDoc.vinNo,
-          // );
-
           return response.status(HttpStatus.OK).send({
             message: 'Vehicle has been updated successfully',
             data: result,
